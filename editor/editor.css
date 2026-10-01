@@ -1,0 +1,120 @@
+
+  :root { font-family: system-ui, -apple-system, Segoe UI, sans-serif; color: #24313d; background: #f4f6f8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  button { font: inherit; cursor: pointer; }
+  .app { height: 100dvh; min-height: 480px; display: flex; flex-direction: column; }
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; background: #fff; border-bottom: 1px solid #dce2e7; box-shadow: 0 2px 10px #1d293510; z-index: 2; }
+  h1 { margin: 0 18px 0 0; font-size: 17px; font-weight: 650; white-space: nowrap; }
+  .group { display: flex; align-items: center; gap: 6px; padding-right: 12px; border-right: 1px solid #dce2e7; }
+  .group:last-child { border-right: 0; }
+  .toolbar button, .menu button { border: 1px solid #cad4dc; background: #fff; color: #24313d; border-radius: 7px; min-height: 34px; padding: 5px 9px; }
+  .toolbar button:hover, .menu button:hover { background: #eaf2f9; border-color: #8aa7c0; }
+  .toolbar button:disabled { opacity: .4; cursor: not-allowed; }
+  .toolbar .primary { background: #256d9d; color: white; border-color: #256d9d; }
+  .toolbar .primary:hover { background: #19577f; color: white; }
+  .zoom-label { font-size: 12px; min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; }
+  #viewport { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #fafbfc; touch-action: none; cursor: default; }
+  #board { display: block; width: 100%; height: 100%; touch-action: none; }
+  .room { cursor: grab; }
+  .room.dragging { cursor: grabbing; }
+  .room .room-body { stroke-width: 0; }
+  .room.normal .room-body { fill: #fff; stroke: #5b7182; }
+  .room.diamond .room-body { fill: #ecf7ff; stroke: #3481b5; }
+  .room.chest .room-body { fill: #fff7d6; stroke: #a98224; }
+  .room.special .room-body { fill: #f4efff; stroke: #7958ab; }
+  .room.monster .room-body, .room.miniboss .room-body, .room.boss .room-body { fill: #fff; }
+  .room.start .room-body { fill: #d9efc5; stroke: #4e8433; }
+  .room.dimmed .room-body { fill: #d9dde1; stroke: #7d8891; }
+  .room.invalid .room-body { fill: #ffe3e6; }
+  .room text, .room .decoration { pointer-events: none; user-select: none; }
+  .resize-handle { fill: white; stroke: #1673bd; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+  .resize-guide { fill: none; stroke: #1673bd; stroke-dasharray: 4 3; stroke-width: 1; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .door { cursor: pointer; }
+  .door .gap { fill: #fafbfc; }
+  .door .open-icon { fill: #18846d; }
+  .door .closed-icon { fill: #a63c4c; }
+  .door .hit { fill: transparent; }
+  .door:hover .open-icon, .door:hover .closed-icon { fill: #0c669f; }
+  .help { display: flex; flex-wrap: wrap; gap: 8px 22px; padding: 7px 14px; background: #fff; border-top: 1px solid #dce2e7; font-size: 12px; color: #536473; }
+  .status { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .menu { position: fixed; z-index: 8; width: min(302px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); overflow: auto; padding: 12px; border-radius: 10px; background: white; border: 1px solid #ccd6df; box-shadow: 0 12px 36px #1d293538; }
+  .menu[hidden] { display: none; }
+  .menu strong { display: block; font-size: 13px; margin-bottom: 9px; }
+  .numbers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+  .numbers button { min-width: 0; }
+  .numbers button.active { background: #d8ecfb; border-color: #3481b5; }
+  .numbers button.locked { background: #f1f3f5; color: #8b949d; border: 1px dashed #aab3bc; }
+  .numbers button svg { display:block; width:42px; height:19px; margin:auto; }
+  #backgroundLayer, #wallsLayer, #enemyImagesLayer, #enemyInfoLayer { pointer-events:none; }
+  #board.background-edit #roomsLayer, #board.background-edit #doorsLayer,
+  #board.image-edit #roomsLayer, #board.image-edit #doorsLayer { pointer-events:none; }
+  .toolbar button[aria-pressed="true"] { background:#d8ecfb; border-color:#3481b5; }
+  .image-actions { display:flex; flex-wrap:wrap; gap:6px; }
+  .image-actions button { font-size:12px; }
+  #enemyImageInput { font-size:12px; padding:4px; }
+  #enemyImageStatus, #backgroundStatus { overflow-wrap:anywhere; }
+  #backgroundPreview { display:block; max-width:100%; max-height:220px; margin:12px auto; }
+  #backgroundPreview[hidden] { display:none; }
+  #backgroundHint, #imageHint { position:absolute; top:12px; left:50%; transform:translateX(-50%); max-width:90%; background:#e8f3ffed; border:1px solid #7ea9c9; border-radius:8px; padding:8px 12px; font-size:12px; pointer-events:none; }
+  #storageWarning { color:#a33829; font-weight:600; }
+  .menu .hint { font-size: 11px; line-height: 1.5; color: #60717e; margin: 8px 0; }
+  .enemy-form { display: grid; gap: 9px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #dce2e7; }
+  .enemy-form[hidden] { display: none; }
+  .enemy-form label { display: grid; gap: 4px; font-size: 12px; }
+  .enemy-form input { width: 100%; min-width: 0; padding: 7px 8px; border: 1px solid #cad4dc; border-radius: 6px; font: inherit; font-size: 14px; }
+  .reward-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .menu input:invalid { border-color: #c44242; }
+  .menu .wide { margin-top: 7px; width: 100%; }
+  .start-check { display:flex; align-items:center; gap:8px; padding-top:12px; margin-top:10px; border-top:1px solid #dce2e7; font-size:14px; cursor:pointer; }
+  .start-check input { width:18px; height:18px; accent-color:#4e8433; }
+  .start-check + .start-check { padding-top:6px; margin-top:0; border-top:0; }
+  #dimmedField { accent-color:#7d8891; }
+  #selectionBox { fill:#1673bd20; stroke:#1673bd; stroke-width:1.5; vector-effect:non-scaling-stroke; pointer-events:none; }
+  dialog { border:1px solid #cad4dc; border-radius:12px; padding:22px; color:#24313d; width:min(640px,95vw); max-height:90dvh; overflow:auto; box-shadow:0 20px 70px #0003; }
+  dialog::backdrop { background:#15243270; }
+  dialog h2 { font-size:20px; margin:0; }
+  .dialog-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  dialog button, .file-link { display:inline-block; border:1px solid #cad4dc; background:#f4f8fb; color:#24313d; border-radius:7px; padding:9px 12px; font:inherit; text-decoration:none; cursor:pointer; }
+  dialog p { font-size:14px; line-height:1.5; }
+  dialog .actions { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+  dialog textarea { display:block; width:100%; min-height:130px; padding:10px; border:1px solid #cad4dc; border-radius:6px; font:12px monospace; resize:vertical; }
+  dialog summary { cursor:pointer; font-size:14px; margin:14px 0 8px; }
+  dialog .note { color:#536473; font-size:12px; }
+  #pngPreview { display:block; max-width:100%; max-height:55vh; margin:12px auto; object-fit:contain; border:1px solid #dce2e7; }
+  #fileInput { display:block; max-width:100%; margin:16px 0; }
+  .toast { position: fixed; bottom: 47px; left: 50%; transform: translateX(-50%); z-index: 10; border-radius: 8px; padding: 9px 13px; color: #fff; background: #24313d; box-shadow: 0 6px 20px #0003; font-size: 13px; pointer-events: none; }
+  .toast[hidden] { display: none; }
+  @media (max-width: 700px) { h1 { width: 100%; } .toolbar { gap: 5px; } .toolbar button { min-height: 32px; font-size: 12px; } .group { padding-right: 6px; } .help { gap: 4px 12px; } }
+  #layoutDialog { width: calc(100vw - 24px); max-width: 1800px; height: calc(100dvh - 24px); max-height: none; padding: 0; overflow: hidden; }
+  #layoutDialog[open] { display: flex; flex-direction: column; }
+  .layout-head { padding: 12px 18px; border-bottom: 1px solid #dce2e7; background: #fff; }
+  .layout-head h2 { font-size: 18px; }
+  .layout-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .layout-head button { padding: 7px 10px; font-size: 13px; }
+  .layout-body { display: grid; grid-template-columns: 292px minmax(0,1fr); flex: 1; min-height: 0; }
+  .layout-controls { overflow-y: auto; padding: 16px; background: #fff; border-right: 1px solid #dce2e7; }
+  .layout-controls fieldset { border: 0; border-bottom: 1px solid #e2e7eb; margin: 0 0 17px; padding: 0 0 16px; min-width: 0; }
+  .layout-controls legend { font-size: 13px; font-weight: 700; padding: 0 0 10px; }
+  .layout-controls label { display: grid; gap: 5px; font-size: 12px; margin: 0 0 11px; }
+  .layout-controls input:not([type=range]), .layout-controls select { width: 100%; min-width: 0; padding: 7px; border: 1px solid #cad4dc; border-radius: 6px; font: inherit; }
+  .layout-controls input[type=file] { font-size: 11px; }
+  .layout-controls input[type=range] { width: 100%; accent-color: #256d9d; }
+  .layout-controls button { padding: 6px 9px; font-size: 12px; }
+  .layout-controls button.active { background: #d8ecfb; border-color: #3481b5; }
+  .layout-controls p { font-size: 12px; margin: 8px 0; }
+  .layout-small { color: #627482; line-height: 1.5; }
+  #layoutStage { overflow: auto; padding: 28px; background: #e3e8ed; display: grid; align-items: start; justify-items: center; min-height: 0; }
+  #layoutCanvas { display: block; background: #eeecdf; box-shadow: 0 10px 35px #20324430; touch-action: none; max-width: none; }
+  .layout-foot { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; padding: 9px 18px; border-top: 1px solid #dce2e7; font-size: 12px; background: #fff; }
+  #layoutMessage { color: #8a3c22; }
+  #layoutPrintSheet { display: none; }
+  @media(max-width:800px) { .layout-body { grid-template-columns: 220px minmax(0,1fr); } .layout-head { align-items: flex-start; } #layoutStage { padding: 12px; } }
+  @media print {
+    body.printing-layout > *:not(#layoutPrintSheet) { display: none !important; }
+    body.printing-layout #layoutPrintSheet { display: flex !important; position: fixed; inset: 0; align-items: center; justify-content: center; background: white; }
+    #layoutPrintSheet img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  }
+
+
+.online-readonly [data-add],.online-readonly #newProject,.online-readonly #importProject,.online-readonly #randomNumbers,.online-readonly #undo,.online-readonly #redo,.online-readonly #backgroundButton{display:none}

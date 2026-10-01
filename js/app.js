@@ -7,13 +7,15 @@ import {authView} from './views/auth.js';
 import {homeView,futureView} from './views/home.js';
 import {profileView} from './views/profile.js';
 import {settingsView} from './views/settings.js';
+import {mapsView} from './views/maps.js';
+import {editorView} from './views/editor.js';
 
 const root=document.querySelector('#app'),nav=document.querySelector('#header-nav');
 const banner=document.querySelector('#network-banner'),toastRegion=document.querySelector('#toast-region');
 const sessions=new SessionStore();
 let profile=null,status=null,currentView=null,route='',renderId=0,booting=true,toastTimer;
 const api=new Api(sessions,{onInvalidSession:invalidateSession});
-document.querySelector('#version-label').textContent=`Phase 1 · ${CONFIG.version}`;
+document.querySelector('#version-label').textContent=`Phase 2 · ${CONFIG.version}`;
 
 function toast(message) {
   clearTimeout(toastTimer);toastRegion.replaceChildren(h('div',{class:'toast'},icon('check'),message));
@@ -61,14 +63,21 @@ async function logout() {
 async function renderRoute(force=false) {
   if (booting) return;
   if (!sessions.read() || !profile) {if (route!=='login') showAuth();return;}
-  let next=location.hash.replace(/^#\/?/,'').split('?')[0] || 'home';
+  const hash=location.hash.replace(/^#\/?/,''),[path,query='']=hash.split('?');
+  let next=path || 'home';
   if (!['home','profile','settings','play','editor','history'].includes(next)) next='home';
-  if (next===route && !force) return;
+  const params=new URLSearchParams(query),mapId=params.get('id'),routeKey=next==='editor'&&mapId?`editor?id=${mapId}`:next;
+  if (routeKey===route && !force) return;
+  if (!force && currentView?.prepareLeave) {
+    const destination=location.hash;
+    await currentView.prepareLeave();
+    if(location.hash!==destination)return;
+  }
   if (!force && currentView?.hasUnsavedChanges?.() && !window.confirm('Ungespeicherte Änderungen verwerfen und die Seite wechseln?')) {
     history.replaceState(null,'',`#/${route}`);return;
   }
-  const id=++renderId;clearView();route=next;renderHeader();
-  const ctx={api,profile,updateProfile,getProfile:()=>profile,applyPreferences,toast,logout};
+  const id=++renderId;clearView();route=routeKey;renderHeader();
+  const ctx={api,profile,status,updateProfile,getProfile:()=>profile,applyPreferences,toast,logout};
   if (next==='home') {
     root.replaceChildren(loading('Dein Lager wird geladen …'));root.setAttribute('aria-busy','true');
     try {
@@ -81,6 +90,10 @@ async function renderRoute(force=false) {
     }
   } else if (next==='profile') show(profileView(ctx));
   else if (next==='settings') show(settingsView(ctx));
+  else if (next==='editor') {
+    if (mapId && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(mapId)) show(editorView({...ctx,mapId}));
+    else show(mapsView(ctx));
+  }
   else show(futureView(next));
   document.title=`${{home:'Dein Lager',profile:'Profil',settings:'Einstellungen',play:'Spielen',editor:'Kartenwerkstatt',history:'Chronik'}[next]} · Würfeldungeon`;
 }

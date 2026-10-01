@@ -1,6 +1,23 @@
 import {CONFIG} from './config.js';
 
 const ERRORS={
+  EDITOR_NOT_INSTALLED:'Die Kartenwerkstatt braucht noch 004_phase2.sql aus der Phase-2-Anleitung.',
+  MAP_NOT_FOUND:'Diese Karte wurde inzwischen gelöscht.',
+  MAP_NAME_INVALID:'Der Kartenname muss 1–80 Zeichen lang sein.',
+  MAP_NAME_TAKEN:'Dieser Kartenname ist schon vergeben. Bitte einen anderen wählen.',
+  MAP_DOCUMENT_INVALID:'Die Kartendaten sind nicht gültig. Bitte Größen, Bildreferenzen und Spielregeln prüfen.',
+  MAP_IMAGE_INVALID:'Bitte eine gültige PNG-, JPG- oder WebP-Datei verwenden.',
+  MAP_IMAGE_TOO_LARGE:'Dieses Bild ist zu groß. Bitte ein kleineres Bild verwenden.',
+  MAP_UPLOAD_NOT_CONFIGURED:'Bitte die neue Function map-asset-upload aus PHASE_2_SETUP.md installieren.',
+  MAP_UPLOAD_UNAVAILABLE:'Der Kartenbild-Upload ist nicht erreichbar. Bitte map-asset-upload und „Verify JWT“ prüfen.',
+  MAP_UPLOAD_FAILED:'Das Kartenbild konnte nicht gespeichert werden. Bitte map-assets und die Upload-Function prüfen.',
+  MAP_CHANGED:'Die Karte wurde inzwischen verändert. Dein lokaler Stand bleibt erhalten. Bitte neu verbinden oder als Kopie sichern.',
+  MAP_LOCK_LOST:'Die Bearbeitungssperre ist abgelaufen oder wurde übernommen. Dein lokaler Stand bleibt erhalten.',
+  MAP_BUSY:'Die Karte wird gerade bearbeitet. Bitte nach Freigabe erneut versuchen.',
+  MAP_READ_ONLY:'Veröffentlichte oder archivierte Karten können nur als Kopie bearbeitet werden.',
+  MAP_INCOMPLETE:'Die Karte braucht noch Änderungen, bevor sie veröffentlicht werden kann.',
+  MAP_WARNINGS:'Bitte die Hinweise vor dem Veröffentlichen bestätigen.',
+  MAP_REQUEST_INVALID:'Diese Speicheranfrage ist nicht mehr gültig. Bitte neu verbinden.',
   NETWORK:'Die Verbindung ist gerade nicht erreichbar. Deine Anmeldung bleibt gespeichert. Bitte erneut versuchen.',
   TIMEOUT:'Die Antwort dauert zu lange. Bitte erneut versuchen. Falls du gerade gespeichert hast, lade den Stand vorher neu.',
   APP_NOT_INSTALLED:'Die Datenbank ist noch nicht eingerichtet. Bitte zuerst 001_phase1.sql und 002_registration_code.sql aus der Setup-Anleitung ausführen.',
@@ -26,14 +43,14 @@ const ERRORS={
 };
 
 export class AppError extends Error {
-  constructor(code='SERVER_ERROR') { super(ERRORS[code] || ERRORS.SERVER_ERROR); this.name='AppError'; this.code=code; }
+  constructor(code='SERVER_ERROR',details=null) { super(ERRORS[code] || ERRORS.SERVER_ERROR); this.name='AppError'; this.code=code; this.details=details; }
 }
 
 export class Api {
   constructor(sessionStore,{config=CONFIG,fetcher=globalThis.fetch,onInvalidSession=()=>{}}={}) {
     this.sessionStore=sessionStore; this.config=config; this.fetcher=fetcher; this.onInvalidSession=onInvalidSession;
   }
-  async request(path,{body,headers={},method='POST',timeout=this.config.requestTimeoutMs}={}) {
+  async request(path,{body,headers={},method='POST',timeout=this.config.requestTimeoutMs,keepalive=false}={}) {
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),timeout);
     try {
@@ -42,7 +59,7 @@ export class Api {
       const fetcher=this.fetcher;
       const response=await fetcher(`${this.config.supabaseUrl}${path}`,{
         method,headers:{apikey:this.config.publishableKey,...headers},body,signal:controller.signal,
-        cache:'no-store',credentials:'omit',
+        cache:'no-store',credentials:'omit',keepalive,
       });
       let data;
       try { data=await response.json(); } catch { throw new AppError('SERVER_ERROR'); }
@@ -50,9 +67,9 @@ export class Api {
         let code=data?.error;
         if (data?.message==='SESSION_INVALID') code='SESSION_INVALID';
         if (!code && path.startsWith('/rest/') && (response.status===404 || data?.code==='PGRST202')) code='APP_NOT_INSTALLED';
-        if (!code && path.startsWith('/functions/') && response.status===404) code='UPLOAD_NOT_CONFIGURED';
+        if (!code && path.startsWith('/functions/') && response.status===404) code=path.includes('map-asset-upload') ? 'MAP_UPLOAD_NOT_CONFIGURED' : 'UPLOAD_NOT_CONFIGURED';
         if (!code && [401,403].includes(response.status)) code=path.startsWith('/functions/') ? 'UPLOAD_UNAVAILABLE' : 'CONFIG_INVALID';
-        throw new AppError(code || 'SERVER_ERROR');
+        throw new AppError(code || 'SERVER_ERROR',data);
       }
       return data;
     } catch (error) {
@@ -83,6 +100,17 @@ export class Api {
     return this.request('/functions/v1/avatar-upload',{
       body,headers:{'x-session-token':token},timeout:40000,
     });
+  }
+  uploadMapAsset(blob,mapId,editorId) {
+    const token=this.sessionStore.read()?.token;
+    if (!token) return Promise.reject(new AppError('SESSION_INVALID'));
+    const body=new FormData();body.append('file',blob,'map-image');body.append('mapId',mapId);body.append('editorId',editorId);
+    return this.request('/functions/v1/map-asset-upload',{body,headers:{'x-session-token':token},timeout:60000});
+  }
+  releaseMapLock(mapId,editorId) {
+    const token=this.sessionStore.read()?.token;
+    if(!token)return Promise.resolve();
+    return this.request('/rest/v1/rpc/release_map_lock',{keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({p_session_token:token,p_map_id:mapId,p_editor_id:editorId})});
   }
   removeAvatar(revision) {
     const token=this.sessionStore.read()?.token;

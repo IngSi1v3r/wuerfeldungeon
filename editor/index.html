@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; object-src 'none'; base-uri 'self'">
+<title>Dungeon-Layout-Editor</title>
+<link rel="stylesheet" href="./editor.css">
+</head>
+<body>
+<div class="app" id="app">
+  <header class="toolbar">
+    <h1>Dungeon-Layout-Editor</h1>
+    <div class="group" aria-label="Felder hinzufügen">
+      <button class="primary" data-add="normal" title="4 × 4 Rastereinheiten">+ Feld</button>
+      <button data-add="diamond" title="4 × 8 Rastereinheiten">+ Diamant</button>
+      <button data-add="chest" title="4 × 8 Rastereinheiten, größenveränderbar">+ Schatzkiste</button>
+      <button data-add="special" title="4 × 4 Rastereinheiten">+ Spezial X</button>
+      <button data-add="monster" title="8 × 8 Rastereinheiten">+ Monster</button>
+      <button data-add="miniboss" title="8 × 8 Rastereinheiten, bis 4 × 4 verkleinerbar">+ Mini-Boss</button>
+      <button data-add="boss" title="16 × 8 Rastereinheiten">+ Boss</button>
+    </div>
+    <div class="group">
+      <button id="undo" title="Strg + Z">↶</button><button id="redo" title="Strg + Y">↷</button>
+      <button id="delete" title="Auswahl löschen (Entf)">Löschen</button>
+      <button id="randomNumbers" title="Nur leere Wegfelder mit 3–11 befüllen. Benachbarte Wegfelder erhalten unterschiedliche Zahlen, auch bei geschlossenen Durchgängen. Einmal Rückgängig nimmt den gesamten Vorgang zurück.">Zufallszahlen generieren</button>
+    </div>
+    <div class="group">
+      <button id="zoomOut" title="Herauszoomen">−</button><span id="zoomLabel" class="zoom-label">100 %</span><button id="zoomIn" title="Hineinzoomen">+</button>
+      <button id="fit" title="Alle Felder zeigen">Alles zeigen</button>
+    </div>
+    <div class="group">
+      <button id="backgroundSettings">Hintergrund…</button>
+      <button id="editBackground" aria-pressed="false" disabled>Hintergrund bearbeiten</button>
+    </div>
+    <div class="group">
+      <button id="exportProject" title="Bearbeitbares Projekt speichern">JSON exportieren</button>
+      <button id="importProject" title="Projektdatei öffnen">Projekt öffnen</button>
+      <button id="openLayout" class="primary">Layout / Drucken</button>
+      <button id="exportImage" title="Gesamtes Spielfeld als PNG">PNG</button>
+      <button id="newProject" title="Alle Felder entfernen">Neu</button>
+    </div>
+  </header>
+  <main id="viewport" aria-label="Zeichenfläche mit Raster">
+    <svg id="board" xmlns="http://www.w3.org/2000/svg" aria-label="Dungeon-Layout">
+      <defs><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M 24 0 L 0 0 0 24" fill="none" stroke="#dce4e9" stroke-width="1"/></pattern></defs>
+      <g id="backgroundLayer"></g>
+      <rect id="gridPlane" x="-10000" y="-10000" width="20000" height="20000" fill="url(#grid)"/>
+      <g id="roomsLayer"></g><g id="wallsLayer"></g><g id="enemyImagesLayer"></g><g id="enemyInfoLayer"></g><g id="doorsLayer"></g><g id="selectionLayer"></g>
+    </svg>
+    <div id="backgroundHint" hidden>Hintergrundmodus · Bild ziehen oder Ziehpunkte verwenden · Escape: zurück zu den Feldern</div>
+    <div id="imageHint" hidden>Gegnerbild bearbeiten · Bild ziehen · Eckpunkte skalieren proportional · maximal 4 Rasterfelder Überstand · Escape: fertig</div>
+    <div class="menu" id="numberMenu" aria-label="Feld bearbeiten" hidden>
+      <strong id="menuTitle">Feld bearbeiten</strong>
+      <div class="numbers" id="numbers" aria-label="Zahlen auswählen"></div>
+      <p class="hint" id="numberHint" hidden>Klicken: nicht gewählt → schwarz (aktiv) → grau (gesperrt) → nicht gewählt.</p>
+      <button id="noNumber" class="wide">Keine Zahl</button>
+      <div id="enemyForm" class="enemy-form" hidden>
+        <label>Name<input id="enemyName" type="text" maxlength="80" placeholder="z. B. Lavagolem" autocomplete="off"></label>
+        <label>Benötigte Treffer<input id="enemyHits" type="number" min="1" max="100" step="1" inputmode="numeric"></label>
+        <div class="reward-fields">
+          <label>Belohnung 1 · Diamanten<input id="rewardFirst" type="number" min="0" max="999" step="1" inputmode="numeric"></label>
+          <label>Belohnung 2 · Diamanten<input id="rewardLater" type="number" min="0" max="999" step="1" inputmode="numeric"></label>
+        </div>
+        <p class="hint">1: erster Spieler · 2: alle weiteren Spieler.<br>Graue Zahlen markieren Freischaltbedingungen; diese werden hier nicht automatisch verknüpft.</p>
+        <label>Gegnerbild auswählen / ersetzen<input id="enemyImageInput" type="file" accept="image/png,image/jpeg,image/webp"></label>
+        <div class="image-actions"><button id="editEnemyImage" type="button">Bild positionieren / skalieren</button><button id="removeEnemyImage" type="button">Bild entfernen</button></div>
+        <p id="enemyImageStatus" class="hint" role="status"></p>
+      </div>
+      <label class="start-check"><input id="startField" type="checkbox">Startfeld (grün)</label>
+      <label class="start-check" id="dimmedFieldLabel"><input id="dimmedField" type="checkbox">Ausgegraut</label>
+      <p id="sizeHint" class="hint"></p>
+      <button id="closeMenu" class="wide">Fertig</button>
+    </div>
+  </main>
+  <footer class="help"><span>Leerfläche ziehen: Auswahlrahmen · Umschalt + Klick: Auswahl ergänzen</span><span>Rechtsklick: Feld bearbeiten / neues Wegfeld</span><span>Ziehpunkte: Feldgröße · Durchgang anklicken: öffnen/schließen</span><span>Mausrad: Zoom · Mittlere Maustaste oder Leertaste + Ziehen: Ansicht</span><span id="storageWarning" role="status" hidden></span><span class="status" id="status">0 Felder · 0 Durchgänge</span></footer>
+</div>
+<dialog id="fileDialog" aria-labelledby="fileTitle">
+  <div class="dialog-head"><h2 id="fileTitle">Projekt speichern</h2><button id="closeFile" aria-label="Dialog schließen">Schließen</button></div>
+  <section id="savePanel" hidden>
+    <p>Die JSON-Datei enthält alle Felder, Pasch-Auswahlen, Größen, Start- und Graumarkierungen, Durchgänge sowie Monster- und Bossdaten inklusive der Positionen und Größen ihrer Bilder. Drucklayout, Levelname, Titelbild und Spezialregelbild werden ebenfalls mitgespeichert. Alle Bilder sind direkt eingebettet – es werden keine zusätzlichen Bilddateien benötigt. Ältere Projekte bleiben ladbar.</p>
+    <div class="actions"><a id="projectDownload" class="file-link" download="Dungeon_Layout.json">JSON herunterladen</a><button id="nativeSave">Speichern unter…</button></div>
+    <details><summary>Alternativ: Projekttext kopieren</summary><textarea id="saveText" readonly aria-label="Projekt als JSON"></textarea><div class="actions"><button id="copyProject">Projekttext kopieren</button></div></details>
+    <p class="note">Downloads landen je nach Browsereinstellung im Downloadordner oder im gewählten Ordner. Die automatische Browsersicherung ist davon unabhängig. Falls die Vorschau Downloads blockiert, öffne die HTML-Datei lokal im Browser oder kopiere den Projekttext.</p>
+  </section>
+  <section id="loadPanel" hidden>
+    <p>Wähle eine zuvor gespeicherte <strong>Dungeon_Layout.json</strong>. Das aktuelle Layout kann nach dem Laden mit Rückgängig wiederhergestellt werden.</p>
+    <input id="fileInput" type="file" accept=".json,application/json" aria-label="Projektdatei auswählen">
+    <details id="pasteDetails"><summary>Alternativ: gespeicherten Projekttext einfügen</summary><textarea id="loadText" placeholder="JSON-Projekttext hier einfügen…" aria-label="Projekttext zum Laden"></textarea><div class="actions"><button id="loadTextButton">Projekttext laden</button></div></details>
+    <p id="loadFeedback" role="status"></p>
+  </section>
+  <section id="imagePanel" hidden><p id="imageInfo"></p><a id="imageDownload" class="file-link" download="Dungeon_Layout.png">PNG herunterladen</a><img id="pngPreview" alt="Vorschau des gesamten Spielfelds"><p class="note">Alternativ: Rechtsklick auf das Bild → „Bild speichern unter…“.</p></section>
+  <section id="backgroundPanel" hidden>
+    <p>Ein gemeinsames Hintergrundbild hinter allen Feldern. PNG, JPG oder WebP, maximal 20 MB. Große Bilder werden beim Import verkleinert und in der Projektdatei gespeichert.</p>
+    <label>Hintergrund auswählen / ersetzen <input id="backgroundInput" type="file" accept="image/png,image/jpeg,image/webp"></label>
+    <img id="backgroundPreview" alt="Hintergrundvorschau" hidden>
+    <p id="backgroundStatus" role="status"></p>
+    <div class="actions"><button id="startBackgroundEdit">Hintergrund verschieben / skalieren</button><button id="removeBackground">Hintergrund entfernen</button></div>
+    <p class="note">Im Hintergrundmodus rastet das Bild am Raster ein. Die Ziehpunkte ändern Breite und Höhe; Seitenverhältnisse lassen sich damit frei anpassen. In der normalen Feldbearbeitung bleibt das Bild gesperrt.</p>
+  </section>
+</dialog>
+<dialog id="layoutDialog" aria-labelledby="layoutTitle">
+  <div class="dialog-head layout-head">
+    <h2 id="layoutTitle">Layout / Druckansicht</h2>
+    <div class="layout-actions">
+      <button id="layoutUndo" title="Strg+Z">↶</button><button id="layoutRedo" title="Strg+Y">↷</button>
+      <button id="layoutSave">JSON exportieren</button>
+      <button id="layoutPNG">Spielbogen als PNG</button>
+      <button id="layoutPrint">Drucken / PDF</button>
+      <button id="closeLayout">Zurück zum Spielfeld</button>
+    </div>
+  </div>
+  <div class="layout-body">
+    <aside class="layout-controls">
+      <fieldset><legend>Spielbogen</legend>
+        <label>Seitenformat<select id="layoutFormat"><option value="auto">Automatisch zum Spielfeld</option><option value="portrait">A4 · Hochformat</option><option value="landscape">A4 · Querformat</option></select></label>
+        <label>Abstand zum Rahmen <output id="layoutPaddingValue"></output><input id="layoutPadding" type="range" min="8" max="100" step="1"></label>
+        <label>Vorschau<select id="layoutView"><option value="fit">Ganze Seite</option><option value="width">Seitenbreite</option><option value="100">100 %</option></select></label>
+        <p class="layout-small">Feste Randbereiche nach der Originalvorlage. Die Vorschaugröße beeinflusst den Export nicht.</p>
+      </fieldset>
+      <fieldset><legend>Spielfeld ausrichten</legend>
+        <button data-layout-target="board">Spielfeld verschieben</button>
+        <label>Größe <output id="layoutBoardScaleValue"></output><input id="layoutBoardScale" type="range" min="10" max="200" step="1"></label>
+        <button id="layoutBoardReset">Vollständig einpassen</button>
+        <p class="layout-small">Ziehen oder Pfeiltasten verschiebt das gesamte Spielfeld. Eckpunkte skalieren. Feldpositionen und Durchgänge bleiben unverändert.</p>
+      </fieldset>
+      <fieldset><legend>Titelkarte · rechts unten</legend>
+        <label>Levelname<input id="layoutName" type="text" maxlength="80" placeholder="z. B. Lava Mine"></label>
+        <label>Titelbild hochladen<input id="layoutTitleInput" type="file" accept="image/png,image/jpeg,image/webp"></label>
+        <button data-layout-target="title">Titelbild ausrichten</button>
+        <button data-layout-reset="title">Einpassen</button><button data-layout-remove="title">Entfernen</button>
+        <label>Bildgröße<input id="layoutTitleScale" type="range" min="10" max="300" step="1"></label>
+      </fieldset>
+      <fieldset><legend>Spezialpunkte · unten links</legend>
+        <p id="layoutSpecialCount"></p>
+        <p class="layout-small">Rahmen 1: alle X-Felder samt Zahl, daneben freie Abhak-Kästchen. Fehlende Zahlen bleiben leer. Belohnung: 3 ♦ / 1 ♦.</p>
+        <label>Regelbild für Rahmen 2<input id="layoutRuleInput" type="file" accept="image/png,image/jpeg,image/webp"></label>
+        <button data-layout-target="rule">Regelbild ausrichten</button>
+        <button data-layout-reset="rule">Einpassen</button><button data-layout-remove="rule">Entfernen</button>
+        <label>Bildgröße<input id="layoutRuleScale" type="range" min="10" max="300" step="1"></label>
+        <p class="layout-small">Rahmen 2: deine individuelle Regelgrafik. Darunter ebenfalls fest 3 ♦ / 1 ♦. PNG, JPG oder WebP, jeweils maximal 20 MB.</p>
+      </fieldset>
+    </aside>
+    <div id="layoutStage"><canvas id="layoutCanvas" aria-label="Drucklayout-Vorschau"></canvas></div>
+  </div>
+  <div class="layout-foot"><span id="layoutHint">Ziehen: ausgewählten Inhalt verschieben · Eckpunkte / Regler: Größe · Escape: Auswahl aufheben</span><span id="layoutMessage" role="status"></span></div>
+</dialog>
+<div id="layoutPrintSheet" aria-hidden="true"><img id="layoutPrintImage" alt="Vollständiger Spielbogen"></div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<script src="./editor.js" defer></script>
+</body>
+</html>

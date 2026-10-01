@@ -14,13 +14,13 @@ export function homeView({profile,counts={}}) {
     pageHeading('Dein Lager','Wo führt dich der nächste Wurf hin?','Ein Ort für gemeinsame Abenteuer. Dein Profil und deine Einstellungen sind schon bereit.'),
     h('div',{class:'menu-grid'},
       card({href:'#/play',title:'Spielen',description:'Eine Karte wählen, Freunde einladen und gemeinsam in die Tiefe steigen.',symbol:'dice',phase:3,main:true}),
-      card({href:'#/editor',title:'Kartenwerkstatt',description:'Eigene Welten erschaffen. Der bestehende Editor zieht als Nächstes hier ein.',symbol:'map',phase:2,main:true}),
+      card({href:'#/editor',title:'Kartenwerkstatt',description:'Welten gemeinsam bauen, Karten prüfen und fertige Abenteuer veröffentlichen.',symbol:'map',main:true}),
       card({href:'#/profile',title:'Dein Profil',description:'Name, Profilbild und deine Abenteuerstatistik.',symbol:'user'}),
       card({href:'#/settings',title:'Einstellungen',description:'Dein Markierungsstil und persönliche Vorlieben.',symbol:'settings'}),
       card({href:'#/history',title:'Chronik',description:'Vergangene Abenteuer und ihre Sieger.',symbol:'book',phase:3})),
     h('div',{class:'camp-strip'},h('div',{},icon('shield'),h('span',{},'Privates Lager · Zugang nur mit Registrierungscode')),
       h('div',{class:'camp-counts'},h('span',{},`${counts.publishedMaps ?? 0} fertige Karten`),h('span',{},`${counts.activeGames ?? 0} laufende Spiele`))),
-    h('p',{class:'phase-explanation'},'Dies ist die funktionsfähige Basis. Kartenwerkstatt, Warteräume und Spielablauf folgen in den nächsten Phasen.'));
+    h('p',{class:'phase-explanation'},'Die Kartenwerkstatt ist geöffnet. Warteräume und Spielablauf folgen in den nächsten Phasen.'));
   return {element};
 }
 
