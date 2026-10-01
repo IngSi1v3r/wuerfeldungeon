@@ -1,6 +1,21 @@
 import {CONFIG} from './config.js';
 
 const ERRORS={
+  PLAY_NOT_INSTALLED:'Zum Würfeln bitte 008_phase4.sql aus PHASE_4_SETUP.md installieren.',
+  GAME_PAUSED:'Das Spiel ist gerade für alle pausiert.',
+  GAME_ROLLER_ONLY:'In dieser Runde würfelt ein anderer Spieler.',
+  GAME_ROUND_CHANGED:'Die nächste Runde hat bereits begonnen. Der aktuelle Stand wird neu geladen.',
+  GAME_ALREADY_ROLLED:'Für diese Runde wurde bereits gewürfelt.',
+  GAME_NOT_ROLLED:'Bitte zuerst auf den Wurf dieser Runde warten.',
+  GAME_TURN_DONE:'Dein Zug für diese Runde ist bereits gespeichert.',
+  GAME_STATE_CHANGED:'Dein Spielstand wurde auf einem anderen Gerät verändert. Bitte erneut wählen.',
+  GAME_CELL_INVALID:'Dieses Feld gehört nicht zum Spielplan.',
+  GAME_CELL_REACHED:'Dieses Feld hast du bereits erreicht.',
+  GAME_CELL_UNREACHABLE:'Dieses Feld grenzt nicht über einen offenen Durchgang an deinen erreichten Weg an.',
+  GAME_NUMBER_MISMATCH:'Die gewürfelten Kombinationen passen zu keiner freigeschalteten Zahl dieses Feldes.',
+  GAME_RED_CONFIRMATION:'Dieser Zug benötigt eine Verwendung des roten Würfels.',
+  GAME_MOVE_AVAILABLE:'Es ist noch ein Zug ohne Sonderwürfel möglich. Bitte ein passendes Feld wählen.',
+  GAME_WAIT_TOO_SHORT:'Der Host kann einen ausstehenden Zug erst nach einer Minute überspringen oder den Spieler entfernen.',
   GAMES_NOT_INSTALLED:'Für Spiele und Warteräume bitte 006_phase3.sql aus PHASE_3_SETUP.md installieren.',
   GAME_NOT_FOUND:'Dieses Spiel ist nicht verfügbar.',
   GAME_INPUT_INVALID:'Bitte Spielname und Eingaben prüfen.',
