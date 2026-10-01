@@ -21,7 +21,7 @@ export function homeView({profile,counts={}}) {
       card({href:'#/history',title:'Chronik',description:'Vergangene Abenteuer und ihre Sieger.',symbol:'book'})),
     h('div',{class:'camp-strip'},h('div',{},icon('shield'),h('span',{},'Privates Lager · Zugang nur mit Registrierungscode')),
       h('div',{class:'camp-counts'},h('span',{},`${counts.publishedMaps ?? 0} fertige Karten`),h('span',{},`${counts.activeGames ?? 0} laufende Spiele`))),
-    h('p',{class:'phase-explanation'},'Werkstatt und Warteräume sind geöffnet. Würfeln und Züge folgen mit Phase 4.'));
+    h('p',{class:'phase-explanation'},'Dein Dungeon wartet: Würfeln, erkunden, Schätze sammeln und Monster besiegen.'));
   return {element};
 }
 

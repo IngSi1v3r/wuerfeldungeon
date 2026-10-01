@@ -24,7 +24,14 @@ export function roomLabel(room) {
  return `${type} ${room.name||`#${room.id}`}${room.number!=null?` · ${room.number==='doubles'?'Pasch':room.number}`:''}`;
 }
 export function elapsedChoiceSeconds(game,now=Date.now(),offset=0) {
- if(!game?.choiceStartedAt||game.phase!=='choosing')return 0;
+ if(!game?.choiceStartedAt||(game.phase!=='choosing'&&!game.participants?.some(p=>p.hasPendingPowerup)))return 0;
  const end=game.status==='paused'?Date.parse(game.pausedAt):now+offset;
  return Math.max(0,Math.floor((end-Date.parse(game.choiceStartedAt))/1000));
+}
+
+export function cellReachable(definition,state,cellId){
+ const id=String(cellId),reached=new Set((state?.reached||[]).map(String)),room=definition.document.rooms.find(r=>String(r.id)===id);
+ if(!room||reached.has(id))return false;
+ if(room.type==='normal'&&room.start)return true;
+ return (Array.isArray(definition.graph)?definition.graph:definition.graph?.edges||[]).some(e=>String(e[0])===id&&reached.has(String(e[1]))||String(e[1])===id&&reached.has(String(e[0])));
 }

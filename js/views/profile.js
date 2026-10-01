@@ -23,7 +23,7 @@ export function profileView(ctx) {
     message,h('div',{class:'button-row'},h('button',{type:'submit',class:'button primary',id:'save-profile'},icon('check'),'Profil speichern'),reload));
 
   function adopt(next,{updateInput=false}={}) {
-    profile=next;ctx.updateProfile(next);portrait.replaceChildren(avatar(profile,'large'));remove.hidden=!profile.avatarPath;
+    profile=next;ctx.updateProfile(next);refreshStatistics();portrait.replaceChildren(avatar(profile,'large'));remove.hidden=!profile.avatarPath;
     if (updateInput) input.value=profile.displayName;
   }
   async function run(action) {
@@ -61,7 +61,10 @@ export function profileView(ctx) {
   }));
 
   const stats=profile.stats || {};
-  const statistics=h('div',{class:'stats-grid'},...[['gamesPlayed','Gespielte Spiele'],['totalPoints','Gesamtpunkte'],['averagePoints','Ø Punkte / Spiel'],['wins','Siege'],['monstersDefeated','Besiegte Monster']].map(([key,label])=>h('div',{class:'stat-card'},h('strong',{},number.format(stats[key] ?? 0)),h('span',{},label))));
+  const statLabels=[['gamesPlayed','Gespielte Spiele'],['totalPoints','Gesamtpunkte'],['averagePoints','Ø Punkte / Spiel'],['wins','Siege'],['monstersDefeated','Besiegte Monster']];
+  const statistics=h('div',{class:'stats-grid'},...statLabels.map(([key,label])=>h('div',{class:'stat-card'},h('strong',{},number.format(stats[key] ?? 0)),h('span',{},label))));
+  function refreshStatistics(){for(const [i,[key]] of statLabels.entries())statistics.children[i].querySelector('strong').textContent=number.format(profile.stats?.[key]??0);}
+  ctx.api.authRpc('get_player_profile').then(data=>{if(!disposed)adopt(data.profile);}).catch(()=>{});
   const sessions=h('div',{id:'session-list',class:'sessions-list'},h('p',{class:'muted'},'Aktive Geräte werden geladen …'));
   const sessionFeedback=feedback();
   async function loadSessions() {

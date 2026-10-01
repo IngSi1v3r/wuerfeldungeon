@@ -24,7 +24,7 @@ try {const saved=sessionStorage.getItem(inviteKey);if(invitePattern.test(saved||
 function rememberInvite(){if(invitePattern.test(location.hash)){pendingInvite=location.hash;try{sessionStorage.setItem(inviteKey,pendingInvite);}catch{}}}
 function clearInvite(){pendingInvite='';try{sessionStorage.removeItem(inviteKey);}catch{}}
 const api=new Api(sessions,{onInvalidSession:invalidateSession});
-document.querySelector('#version-label').textContent=`Phase 4 · ${CONFIG.version}`;
+document.querySelector('#version-label').textContent=`Prototyp · ${CONFIG.version}`;
 
 function toast(message) {
   clearTimeout(toastTimer);toastRegion.replaceChildren(h('div',{class:'toast'},icon('check'),message));

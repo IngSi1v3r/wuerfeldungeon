@@ -1,6 +1,13 @@
 import {CONFIG} from './config.js';
 
 const ERRORS={
+  GAME_POWERUP_PENDING:'Bitte zuerst das Powerup aus deiner geöffneten Truhe wählen.',
+  GAME_POWERUP_UNAVAILABLE:'Dieses Powerup wurde bereits gewählt oder ist auf dieser Karte nicht freigegeben.',
+  GAME_CHEST_INVALID:'Für diese Truhe ist keine Auswahl mehr offen. Der Spielstand wird neu geladen.',
+  GAME_TORCH_EMPTY:'Du hast keine Fackelverwendung mehr.',
+  GAME_TORCH_PATH:'Wähle zuerst einen angrenzenden, noch freien Raum und dann dessen Nachbarfeld. Ein Gegner kann kein Zwischenraum sein.',
+  GAME_AXE_UNAVAILABLE:'Ein Doppelhit ist nur bei einem Gegner mit einer übrigen Axtverwendung möglich.',
+  GAME_POWERUP_COMBINATION:'Fackel und Doppelhit werden in getrennten Zügen verwendet. Rot lässt sich mit beiden kombinieren.',
   PLAY_NOT_INSTALLED:'Zum Würfeln bitte 008_phase4.sql aus PHASE_4_SETUP.md installieren.',
   GAME_PAUSED:'Das Spiel ist gerade für alle pausiert.',
   GAME_ROLLER_ONLY:'In dieser Runde würfelt ein anderer Spieler.',
