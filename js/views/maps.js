@@ -18,7 +18,7 @@ export function mapNameDialog({title='Neue Karte',value='',submitLabel='Karte er
   dialog.addEventListener('close',()=>dialog.remove(),{once:true});document.body.append(dialog);dialog.showModal();name.focus();return dialog;
 }
 
-function miniature(rooms=[]) {
+export function miniature(rooms=[]) {
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('class','map-miniature');svg.setAttribute('aria-hidden','true');
   if(!rooms.length){svg.setAttribute('viewBox','0 0 160 96');const p=document.createElementNS(svg.namespaceURI,'path');p.setAttribute('d','M40 24h24v24H40z M64 36h24v24H64z M88 48h32v32H88z');p.setAttribute('fill','none');p.setAttribute('stroke','#749386');p.setAttribute('stroke-width','2');svg.append(p);return svg;}
   const x=Math.min(...rooms.map(r=>r.x)),y=Math.min(...rooms.map(r=>r.y)),right=Math.max(...rooms.map(r=>r.x+r.w)),bottom=Math.max(...rooms.map(r=>r.y+r.h));

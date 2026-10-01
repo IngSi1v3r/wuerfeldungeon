@@ -11,16 +11,17 @@ export function homeView({profile,counts={}}) {
   const element=h('section',{class:'home-view'},
     h('div',{class:'welcome-line'},avatar(profile),h('span',{},'Schön, dass du da bist, ',h('strong',{},profile.displayName),'.'),
       h('span',{class:'badge'},h('span',{class:'status-dot'}),'Lager bereit')),
-    pageHeading('Dein Lager','Wo führt dich der nächste Wurf hin?','Ein Ort für gemeinsame Abenteuer. Dein Profil und deine Einstellungen sind schon bereit.'),
+    pageHeading('Dein Lager','Wo führt dich der nächste Wurf hin?','Ein Ort für gemeinsame Abenteuer. Versammle deinen Trupp oder entdecke eine neue Welt.'),
+    counts.activeGames>0?h('a',{class:'continue-strip',href:'#/play'},icon('dice'),h('span',{},`${counts.activeGames} ${counts.activeGames===1?'Abenteuer wartet':'Abenteuer warten'} auf dich.`,h('strong',{},'Spiel fortsetzen')),icon('arrow')):null,
     h('div',{class:'menu-grid'},
-      card({href:'#/play',title:'Spielen',description:'Eine Karte wählen, Freunde einladen und gemeinsam in die Tiefe steigen.',symbol:'dice',phase:3,main:true}),
+      card({href:'#/play',title:'Spielen',description:'Eine Karte wählen, Freunde einladen und begonnene Runden fortsetzen.',symbol:'dice',main:true}),
       card({href:'#/editor',title:'Kartenwerkstatt',description:'Welten gemeinsam bauen, Karten prüfen und fertige Abenteuer veröffentlichen.',symbol:'map',main:true}),
       card({href:'#/profile',title:'Dein Profil',description:'Name, Profilbild und deine Abenteuerstatistik.',symbol:'user'}),
       card({href:'#/settings',title:'Einstellungen',description:'Dein Markierungsstil und persönliche Vorlieben.',symbol:'settings'}),
-      card({href:'#/history',title:'Chronik',description:'Vergangene Abenteuer und ihre Sieger.',symbol:'book',phase:3})),
+      card({href:'#/history',title:'Chronik',description:'Vergangene Abenteuer und ihre Sieger.',symbol:'book'})),
     h('div',{class:'camp-strip'},h('div',{},icon('shield'),h('span',{},'Privates Lager · Zugang nur mit Registrierungscode')),
       h('div',{class:'camp-counts'},h('span',{},`${counts.publishedMaps ?? 0} fertige Karten`),h('span',{},`${counts.activeGames ?? 0} laufende Spiele`))),
-    h('p',{class:'phase-explanation'},'Die Kartenwerkstatt ist geöffnet. Warteräume und Spielablauf folgen in den nächsten Phasen.'));
+    h('p',{class:'phase-explanation'},'Werkstatt und Warteräume sind geöffnet. Würfeln und Züge folgen mit Phase 4.'));
   return {element};
 }
 

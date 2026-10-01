@@ -4,18 +4,27 @@ import {Api} from './api.js';
 import {h,icon,avatar,feedback,pageHeading} from './dom.js';
 import {cleanPreferences} from './validation.js';
 import {authView} from './views/auth.js';
-import {homeView,futureView} from './views/home.js';
+import {homeView} from './views/home.js';
 import {profileView} from './views/profile.js';
 import {settingsView} from './views/settings.js';
 import {mapsView} from './views/maps.js';
 import {editorView} from './views/editor.js';
+import {playView} from './views/play.js';
+import {newGameView} from './views/new-game.js';
+import {gameView} from './views/game.js';
+import {historyView} from './views/history.js';
 
 const root=document.querySelector('#app'),nav=document.querySelector('#header-nav');
 const banner=document.querySelector('#network-banner'),toastRegion=document.querySelector('#toast-region');
 const sessions=new SessionStore();
 let profile=null,status=null,currentView=null,route='',renderId=0,booting=true,toastTimer;
+const inviteKey='wuerfeldungeon.invite.v1',invitePattern=/^#\/game\?id=[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+let pendingInvite='';
+try {const saved=sessionStorage.getItem(inviteKey);if(invitePattern.test(saved||''))pendingInvite=saved;}catch{/* Optionaler Rücksprung nach Anmeldung. */}
+function rememberInvite(){if(invitePattern.test(location.hash)){pendingInvite=location.hash;try{sessionStorage.setItem(inviteKey,pendingInvite);}catch{}}}
+function clearInvite(){pendingInvite='';try{sessionStorage.removeItem(inviteKey);}catch{}}
 const api=new Api(sessions,{onInvalidSession:invalidateSession});
-document.querySelector('#version-label').textContent=`Phase 2 · ${CONFIG.version}`;
+document.querySelector('#version-label').textContent=`Phase 3 · ${CONFIG.version}`;
 
 function toast(message) {
   clearTimeout(toastTimer);toastRegion.replaceChildren(h('div',{class:'toast'},icon('check'),message));
@@ -40,13 +49,14 @@ function loading(text='Das Lager öffnet sich …') {
 function clearView() {currentView?.cleanup?.();currentView=null;}
 function show(view) {currentView=view;root.replaceChildren(view.element);root.setAttribute('aria-busy','false');}
 function showAuth(message='') {
+  rememberInvite();
   renderId++;clearView();route='login';profile=null;renderHeader();
   document.title='Anmelden · Würfeldungeon';
   history.replaceState(null,'','#/login');
   show(authView({api,status,initialMessage:message,onAuthenticated:async data=>{
     const persistent=sessions.save(data.session);updateProfile(data.profile);
     if (!persistent) toast('Angemeldet. Dieser Browser erlaubt keine dauerhafte Speicherung der Sitzung.');
-    history.replaceState(null,'','#/home');await renderRoute(true);
+    const destination=pendingInvite||'#/home';clearInvite();history.replaceState(null,'',destination);await renderRoute(true);
   }}));
 }
 function invalidateSession() {
@@ -55,6 +65,7 @@ function invalidateSession() {
 }
 async function logout() {
   if (!window.confirm('Auf diesem Gerät abmelden?')) return;
+  clearInvite();
   let offline=false;
   try {await api.authRpc('logout_player_session');} catch {offline=true;}
   sessions.clear();showAuth(offline ? 'Auf diesem Gerät abgemeldet. Der Server konnte die Sitzung nicht widerrufen. Du kannst sie auf einem anderen angemeldeten Gerät im Profil beenden.' : 'Du wurdest auf diesem Gerät abgemeldet.');
@@ -65,8 +76,8 @@ async function renderRoute(force=false) {
   if (!sessions.read() || !profile) {if (route!=='login') showAuth();return;}
   const hash=location.hash.replace(/^#\/?/,''),[path,query='']=hash.split('?');
   let next=path || 'home';
-  if (!['home','profile','settings','play','editor','history'].includes(next)) next='home';
-  const params=new URLSearchParams(query),mapId=params.get('id'),routeKey=next==='editor'&&mapId?`editor?id=${mapId}`:next;
+  if (!['home','profile','settings','play','new-game','game','editor','history'].includes(next)) next='home';
+  const params=new URLSearchParams(query),mapId=params.get('id'),routeKey=['editor','game'].includes(next)&&mapId?`${next}?id=${mapId}`:next;
   if (routeKey===route && !force) return;
   if (!force && currentView?.prepareLeave) {
     const destination=location.hash;
@@ -94,8 +105,14 @@ async function renderRoute(force=false) {
     if (mapId && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(mapId)) show(editorView({...ctx,mapId}));
     else show(mapsView(ctx));
   }
-  else show(futureView(next));
-  document.title=`${{home:'Dein Lager',profile:'Profil',settings:'Einstellungen',play:'Spielen',editor:'Kartenwerkstatt',history:'Chronik'}[next]} · Würfeldungeon`;
+  else if (next==='play') show(playView(ctx));
+  else if (next==='new-game') show(newGameView(ctx));
+  else if (next==='game') {
+    if(mapId&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(mapId))show(gameView({...ctx,gameId:mapId}));
+    else show(playView(ctx));
+  }
+  else if (next==='history') show(historyView(ctx));
+  document.title=`${{home:'Dein Lager',profile:'Profil',settings:'Einstellungen',play:'Spielen','new-game':'Neues Spiel',game:'Spielraum',editor:'Kartenwerkstatt',history:'Chronik'}[next]} · Würfeldungeon`;
 }
 
 function connectionRecovery(error) {
@@ -124,7 +141,7 @@ async function bootstrap() {
     }
     booting=false;
     if (!profile) showAuth();
-    else await renderRoute(true);
+    else {if(pendingInvite&&location.hash==='#/login')history.replaceState(null,'',pendingInvite);clearInvite();await renderRoute(true);}
   } catch (error) {booting=false;connectionRecovery(error);}
 }
 

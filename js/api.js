@@ -1,6 +1,23 @@
 import {CONFIG} from './config.js';
 
 const ERRORS={
+  GAMES_NOT_INSTALLED:'Für Spiele und Warteräume bitte 006_phase3.sql aus PHASE_3_SETUP.md installieren.',
+  GAME_NOT_FOUND:'Dieses Spiel ist nicht verfügbar.',
+  GAME_INPUT_INVALID:'Bitte Spielname und Eingaben prüfen.',
+  GAME_SETTINGS_INVALID:'Bitte 2–16 Plätze, offene oder verdeckte Karten und eine Tipps-Einstellung wählen.',
+  GAME_PASSWORD_INVALID:'Das Spielpasswort darf höchstens 72 UTF-8-Bytes lang sein.',
+  GAME_PASSWORD_WRONG:'Das Spielpasswort stimmt nicht.',
+  GAME_MAP_UNAVAILABLE:'Diese Karte ist nicht mehr für neue Spiele freigegeben. Bitte eine andere wählen.',
+  GAME_JOIN_REQUIRED:'Bitte diesem Warteraum zuerst beitreten.',
+  GAME_NOT_MEMBER:'Du bist kein aktiver Teilnehmer dieses Spiels.',
+  GAME_REMOVED:'Der Host hat dich aus diesem Warteraum entfernt.',
+  GAME_FULL:'Dieser Warteraum ist inzwischen voll.',
+  GAME_ALREADY_STARTED:'Der Warteraum ist bereits geschlossen. Es können keine neuen Spieler mehr beitreten.',
+  GAME_HOST_ONLY:'Diese Aktion kann nur der aktuelle Host ausführen.',
+  GAME_CHANGED:'Im Spiel hat sich gerade etwas geändert. Der aktuelle Stand wird neu geladen; bitte danach erneut wählen.',
+  GAME_CLOSED:'Dieses Spiel ist bereits abgeschlossen oder abgebrochen.',
+  GAME_ACTION_INVALID:'Diese Aktion ist im aktuellen Spielstand nicht möglich.',
+  GAME_REQUEST_INVALID:'Diese Anfrage wurde bereits für eine andere Aktion verwendet. Bitte den Spielstand neu laden.',
   EDITOR_NOT_INSTALLED:'Die Kartenwerkstatt braucht noch 004_phase2.sql aus der Phase-2-Anleitung.',
   MAP_NOT_FOUND:'Diese Karte wurde inzwischen gelöscht.',
   MAP_NAME_INVALID:'Der Kartenname muss 1–80 Zeichen lang sein.',
