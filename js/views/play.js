@@ -1,7 +1,7 @@
 import {h,icon,avatar,feedback,setFeedback,pageHeading} from '../dom.js';
 import {AppError} from '../api.js';
 import {CONFIG} from '../config.js';
-import {miniature} from './maps.js';
+import {miniature,mapMiniature} from './maps.js';
 import {watchGameChanges} from '../games/realtime.js';
 import {gameLink,dateLabel,settingsBadges,liveIndicator,joinDialog,gameStatusLabel} from '../games/ui.js';
 
@@ -15,7 +15,7 @@ export function playView(ctx) {
   h('div',{class:'game-section-heading'},h('h2',{},'Offene Warteräume'),h('p',{class:'muted'},'Hier kannst du bis zum Spielstart einsteigen.')),lobbies);
  function card(g) {
   const lobby=g.status==='lobby',full=g.playerCount>=g.settings.maxPlayers;
-  return h('article',{class:'game-card panel','data-game-id':g.id},h('div',{class:'game-card-map'},miniature(g.map.preview)),h('div',{class:'game-card-main'},
+  return h('article',{class:'game-card panel','data-game-id':g.id},h('div',{class:'game-card-map'},mapMiniature(api,g.map)),h('div',{class:'game-card-main'},
    h('div',{class:'game-title-row'},h('h3',{},g.name),h('span',{class:`game-status ${g.status}`},gameStatusLabel(g))),h('p',{class:'game-map-name'},icon('map'),g.map.name),
    h('div',{class:'game-host'},avatar(g.host,'small'),h('span',{},'Host: ',g.host.displayName),h('span',{class:'muted'},`${g.playerCount} / ${g.settings.maxPlayers} Spieler`)),settingsBadges(g.settings),
    h('small',{class:'muted'},`Erstellt ${dateLabel(g.createdAt)}`)),h('div',{class:'game-card-action'},g.passwordRequired?h('span',{class:'muted password-note'},icon('lock'),'Mit Passwort'):null,

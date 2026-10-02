@@ -8,7 +8,10 @@ import {activeAttacks,roomLabel} from './rules.js';
 export function boardPreview(api,definition,{onCell=()=>{},onReady=()=>{},template=null,title='Dein Spielplan',prefix='game'}={}) {
  let closed=false,frame=null,svg=null,base=null,box=null,pristine=null,pointers=new Map(),pinch=null,tap=null,view=null;
  const ns='http://www.w3.org/2000/svg',rooms=definition.document.rooms;
+ const painted=new WeakMap();
  const sv=(tag,attrs={})=>{const node=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))node.setAttribute(k,String(v));return node;};
+ const attr=(node,key,value)=>{const text=String(value);if(node.getAttribute(key)!==text)node.setAttribute(key,text);};
+ const toggle=(node,key,value)=>{if(node.classList.contains(key)!==Boolean(value))node.classList.toggle(key,Boolean(value));};
  const stage=h('div',{class:'game-board-stage',id:`${prefix}-board-stage`},h('p',{class:'board-loading',role:'status'},h('span',{class:'loader'}),'Spielplan wird geladen …'));
  function setBox(next){box=next;svg?.setAttribute('viewBox',box.join(' '));}
  function metrics(){const rect=svg.getBoundingClientRect(),scale=Math.min(rect.width/box[2],rect.height/box[3]);return {rect,scale,dx:(rect.width-box[2]*scale)/2,dy:(rect.height-box[3]*scale)/2};}
@@ -35,30 +38,43 @@ export function boardPreview(api,definition,{onCell=()=>{},onReady=()=>{},templa
  }
  function update(next){view=next;if(svg)paint(svg,next);}
  function paint(canvas,next){
+  let previous=painted.get(canvas);
+  if(!previous){
+   previous={marks:canvas.querySelector('.game-progress-marks'),targets:new Map([...canvas.querySelectorAll('.game-cell-target')].map(n=>[n.getAttribute('data-cell-id'),n])),
+    infos:new Map([...canvas.querySelectorAll('.enemy-info')].map(n=>[n.getAttribute('data-id'),n])),marked:new Map([...canvas.querySelectorAll('[data-marked-cell]')].map(n=>[n.getAttribute('data-marked-cell'),n]))};
+   painted.set(canvas,previous);
+  }
+  const key=JSON.stringify([next.state?.reached,next.state?.monsterHits,next.hints?next.actions:null,next.claims,next.markStyle,next.interactive,next.middleCellId]);
+  if(previous.key===key)return;previous.key=key;
   const state=next.state||{},reached=new Set((state.reached||[]).map(String)),legal=new Map((next.hints?next.actions||[]:[]).map(a=>[String(a.cellId),a])),claims=new Map((next.claims||[]).map(c=>[String(c.cellId),c]));
-  const marks=canvas.querySelector('.game-progress-marks'),targets=canvas.querySelector('.game-cell-targets');marks.replaceChildren();
-  for(const r of rooms){const id=String(r.id),done=reached.has(id),action=legal.get(id),target=[...targets.children].find(n=>n.getAttribute('data-cell-id')===id);
-   target.classList.toggle('legal-cell',Boolean(action&&next.interactive));target.classList.toggle('red-cell',Boolean(action?.redOnly&&next.interactive));target.classList.toggle('reached-cell',done);target.classList.toggle('torch-middle',next.middleCellId===id);
-   target.setAttribute('aria-label',`${roomLabel(r)}${done?' · erreicht':''}${action&&next.interactive?` · ${action.redOnly?'mit rotem Würfel':'spielbar'}`:''}`);target.setAttribute('aria-disabled',String(!next.interactive||done));
+  const {marks,targets,infos,marked}=previous,style=next.markStyle||'pencil';
+  for(const r of rooms){const id=String(r.id),done=reached.has(id),action=legal.get(id),target=targets.get(id);
+   if(target){
+    toggle(target,'legal-cell',action&&next.interactive);toggle(target,'red-cell',action?.redOnly&&next.interactive);toggle(target,'reached-cell',done);toggle(target,'torch-middle',next.middleCellId===id);
+    attr(target,'aria-label',`${roomLabel(r)}${done?' · erreicht':''}${action&&next.interactive?` · ${action.redOnly?'mit rotem Würfel':'spielbar'}`:''}`);attr(target,'aria-disabled',!next.interactive||done);
+   }
    const x=r.x*24+9,y=r.y*24+9,w=r.w*24-18,h=r.h*24-18;
-   if(done){const g=sv('g',{'data-marked-cell':id,class:`played-mark ${next.markStyle||'pencil'}`});
-    if(next.markStyle==='solid')g.append(sv('rect',{x,y,width:w,height:h,rx:5,fill:'#20352a',opacity:.3}));
-    else if(next.markStyle==='cross')g.append(sv('path',{d:`M ${x} ${y} L ${x+w} ${y+h} M ${x+w} ${y} L ${x} ${y+h}`,stroke:'#263932','stroke-width':3,opacity:.5,fill:'none'}));
-    else if(next.markStyle==='waves'){
+   const oldMark=marked.get(id);
+   if(oldMark&&(!done||!oldMark.classList.contains(style))){oldMark.remove();marked.delete(id);}
+   if(done&&!marked.has(id)){const g=sv('g',{'data-marked-cell':id,class:`played-mark ${style}`});
+    if(style==='solid')g.append(sv('rect',{x,y,width:w,height:h,rx:5,fill:'#20352a',opacity:.3}));
+    else if(style==='cross')g.append(sv('path',{d:`M ${x} ${y} L ${x+w} ${y+h} M ${x+w} ${y} L ${x} ${y+h}`,stroke:'#263932','stroke-width':3,opacity:.5,fill:'none'}));
+    else if(style==='waves'){
      for(let dy=6;dy<h;dy+=14)g.append(sv('path',{d:`M ${x} ${y+dy} Q ${x+w/4} ${y+dy-8} ${x+w/2} ${y+dy} T ${x+w} ${y+dy}`,stroke:'#263932','stroke-width':1.6,opacity:.35,fill:'none'}));
     }else{
      // Eine schmale Schraffur; keine Raster-/Raumgeometrie wird verändert.
      for(let dy=8;dy<h;dy+=12)g.append(sv('path',{d:`M ${x+3} ${y+dy} L ${x+w-3} ${y+dy-5}`,stroke:'#263932','stroke-width':1.4,opacity:.33,fill:'none'}));
-    }marks.append(g);
+    }marks.append(g);marked.set(id,g);
    }
-   const info=[...canvas.querySelectorAll('.enemy-info')].find(n=>n.getAttribute('data-id')===id);if(!info)continue;
-   const hits=state.monsterHits?.[id]||0;for(const rect of info.querySelectorAll('[data-hit]'))rect.setAttribute('fill',Number(rect.getAttribute('data-hit'))<=hits?'#375b48':'#fff');
+   const info=infos.get(id);if(!info)continue;
+   const hits=state.monsterHits?.[id]||0;for(const rect of info.querySelectorAll('[data-hit]'))attr(rect,'fill',Number(rect.getAttribute('data-hit'))<=hits?'#375b48':'#fff');
    const active=new Set(activeAttacks(r,definition.rules,state));for(const node of info.querySelectorAll('[data-attack]')){
-    const unlocked=active.has(node.getAttribute('data-attack'));node.setAttribute('data-state',unlocked?'active':'locked');
-    const color=unlocked?'#172b3b':'#9aa3ac';if(node.tagName==='text')node.setAttribute('fill',color);else for(const n of [node,...node.querySelectorAll('*')])for(const attr of ['fill','stroke'])if(['#9aa3ac','#172b3b'].includes(n.getAttribute(attr)))n.setAttribute(attr,color);
+    const unlocked=active.has(node.getAttribute('data-attack'));attr(node,'data-state',unlocked?'active':'locked');
+    const color=unlocked?'#172b3b':'#9aa3ac';if(node.tagName==='text')attr(node,'fill',color);else for(const n of [node,...node.querySelectorAll('*')])for(const property of ['fill','stroke'])if(['#9aa3ac','#172b3b'].includes(n.getAttribute(property)))attr(n,property,color);
    }
-   info.querySelector('[data-reward-strike]')?.remove();const claim=claims.get(id),first=info.querySelector('[data-enemy-reward="1"]');
-   if(claim&&!claim.ownFirst&&r.rewardFirst>0&&first){const b=JSON.parse(first.getAttribute('data-strike-bounds')||'null')||first.getBBox();info.append(sv('path',{'data-reward-strike':true,d:`M ${b.x-2} ${b.y+b.height/2} L ${b.x+b.width+2} ${b.y+b.height/2}`,stroke:'#a34238','stroke-width':1.7}));}
+   const strike=info.querySelector('[data-reward-strike]'),claim=claims.get(id),first=info.querySelector('[data-enemy-reward="1"]'),needed=claim&&!claim.ownFirst&&r.rewardFirst>0&&first;
+   if(!needed)strike?.remove();
+   else if(!strike){const b=JSON.parse(first.getAttribute('data-strike-bounds')||'null')||first.getBBox();info.append(sv('path',{'data-reward-strike':true,d:`M ${b.x-2} ${b.y+b.height/2} L ${b.x+b.width+2} ${b.y+b.height/2}`,stroke:'#a34238','stroke-width':1.7}));}
   }
  }
  async function load() {
@@ -97,8 +113,9 @@ export function boardPreview(api,definition,{onCell=()=>{},onReady=()=>{},templa
   svg.append(targets);stage.replaceChildren(svg);setBox([...base]);wire();if(view)update(view);onReady();
  }
  function getTemplate(){return pristine?{svg:pristine,base:[...base]}:null;}
- function thumbnail(next){
+ function thumbnail(next,existing=null){
   if(!svg)return null;
+  if(existing){paint(existing,{...next,interactive:false,hints:false});return existing;}
   const clone=svg.cloneNode(true);clone.setAttribute('viewBox',base.join(' '));clone.setAttribute('aria-hidden','true');clone.removeAttribute('role');clone.removeAttribute('aria-label');
   paint(clone,{...next,interactive:false,hints:false});clone.querySelector('.game-cell-targets')?.remove();
   for(const n of [clone,...clone.querySelectorAll('[id]')])n.removeAttribute('id');

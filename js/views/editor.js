@@ -1,3 +1,4 @@
+import {upgradeDocument,compileDocument} from '../maps/features.js';
 import {h,icon,feedback,setFeedback} from '../dom.js';
 import {CONFIG} from '../config.js';
 import {AppError} from '../api.js';
@@ -15,17 +16,19 @@ export function editorView({api,profile,status,toast,mapId}) {
   const saveButton=h('button',{id:'save-map',class:'button secondary',onclick:()=>flush().catch(()=>{})},icon('check'),'Jetzt speichern');
   const reconnect=h('button',{id:'reconnect-map',class:'button secondary',hidden:true,onclick:()=>map&&editor?reconnectEditor():location.reload()},'Neu verbinden');
   const publish=h('button',{id:'check-publish-map',class:'button primary',onclick:()=>checkPublish()},icon('shield'),'Prüfen & veröffentlichen');
-  const rules=h('button',{id:'map-rules',class:'button secondary',disabled:true,onclick:()=>rulesDialog({document:currentDocument(),readOnly:!acquired,onSave:(next,powers)=>{document.rules=next;document.allowedPowerups=powers;changed();}})},'Spielregeln');
+  const rules=h('button',{id:'map-rules',class:'button secondary',disabled:true,onclick:()=>rulesDialog({document:currentDocument(),readOnly:!acquired,onSave:(next,powers)=>{editor.setRules(next,powers);}})},'Spielregeln');
   const exportButton=h('button',{id:'export-map-json',class:'button secondary',disabled:true,onclick:()=>exportLocal()},'JSON exportieren');
+  const fullscreen=h('button',{id:'editor-fullscreen',class:'button secondary',onclick:async()=>{try{if(element.classList.contains('editor-maximized')){element.classList.remove('editor-maximized');fullscreen.textContent='Vollbild';return;}if(documentGlobal().fullscreenElement)await documentGlobal().exitFullscreen();else await element.requestFullscreen();}catch{element.classList.toggle('editor-maximized');}fullscreen.textContent=documentGlobal().fullscreenElement||element.classList.contains('editor-maximized')?'Vollbild verlassen':'Vollbild';}},'Vollbild');
   const copy=h('button',{id:'copy-current-map',class:'button secondary',disabled:true,onclick:()=>copyCurrent()},'Als Kopie');
   const frame=h('iframe',{id:'dungeon-editor',class:'dungeon-editor',src:'./editor/index.html',title:'Dungeon-Karteneditor'}),overlay=h('div',{class:'editor-loading',role:'status'},h('span',{class:'loader'}),'Die Zeichenfläche öffnet sich …');
   const element=h('section',{class:'editor-workbench'},h('div',{class:'editor-heading'},h('a',{class:'button secondary editor-back',href:'#/editor'},icon('back'),'Karten'),h('div',{class:'editor-title'},name,h('div',{class:'editor-title-meta'},state,savedDetails)),h('div',{class:'editor-save'},saveStatus,saveButton)),
-    h('div',{class:'editor-actions'},h('div',{class:'button-row'},rules,exportButton,copy,reconnect),publish),message,h('div',{class:'editor-frame-wrap'},frame,overlay));
+    h('div',{class:'editor-actions'},h('div',{class:'button-row'},rules,exportButton,copy,fullscreen,reconnect),publish),message,h('div',{class:'editor-frame-wrap'},frame,overlay));
+  const fullscreenChanged=()=>{fullscreen.textContent=documentGlobal().fullscreenElement===element||element.classList.contains('editor-maximized')?'Vollbild verlassen':'Vollbild';};documentGlobal().addEventListener('fullscreenchange',fullscreenChanged);
   documentGlobal().body.classList.add('workshop-open');
   const ready=new Promise((resolve,reject)=>{let attempts=0;const timer=setInterval(()=>{if(closed){clearInterval(timer);reject(Error('Editor geschlossen.'));return;}if(frame.contentWindow?.DungeonEditor && frame.contentDocument?.documentElement.dataset.ready==='true'){clearInterval(timer);resolve(frame.contentWindow.DungeonEditor);}else if(++attempts>250){clearInterval(timer);reject(Error('Die Zeichenfläche konnte nicht geladen werden. Bitte neu laden.'));}},40);});
   ready.catch(()=>{});
   function documentGlobal(){return globalThis.document;}
-  function currentDocument(){return {...(editor?.getDocument() || document),rules:structuredClone(document?.rules || defaultRules()),allowedPowerups:[...(document?.allowedPowerups || ['extraLife','redDice','torch'])]};}
+  function currentDocument(){return compileDocument(editor?.getDocument() || document);}
   function statusText(text,kind=''){saveStatus.textContent=text;saveStatus.className=`map-save-status ${kind}`;}
   function applyMode(){
     if(!map||!editor)return;
@@ -50,7 +53,7 @@ export function editorView({api,profile,status,toast,mapId}) {
       statusText('Bilder und Karte werden gespeichert …','pending');await backupNow();
       if(!pendingSave){const doc=currentDocument();pendingSave={generation,name:name.value.trim(),document:doc,revision:workingRevision,requestId:crypto.randomUUID(),stored:null};}
       const attempt=pendingSave;
-      if(!attempt.stored)attempt.stored=await assets.store(attempt.document);
+      if(!attempt.stored){if(attempt.generation===generation){const preview=await editor.exportPreview();if(attempt.generation===generation)attempt.document.previewImage=preview;}attempt.stored=await assets.store(attempt.document);}
       const result=await api.authRpc('save_map',{p_map_id:mapId,p_editor_id:editorId,p_expected_revision:attempt.revision,p_name:attempt.name,p_document:attempt.stored,p_request_id:attempt.requestId});
       map={...map,...result.map};workingRevision=map.revision;pendingSave=null;
       if(attempt.generation===generation){dirty=false;await recovery.clear().catch(()=>{});}else await backupNow();
@@ -72,8 +75,8 @@ export function editorView({api,profile,status,toast,mapId}) {
     catch(error){if(closed)return;if(error.code==='MAP_LOCK_LOST'||error.code==='SESSION_INVALID'){acquired=false;applyMode();}setFeedback(message,error.message);}
   }
   async function installDocument(raw){
-    const hydrated=await assets.hydrate(raw);await editor.load(hydrated);
-    document={...editor.getDocument(),rules:structuredClone(raw.rules || defaultRules()),allowedPowerups:[...(raw.allowedPowerups || map.allowedPowerups || ['extraLife','redDice','torch'])]};
+    const hydrated=await assets.hydrate(map.status==='draft'?upgradeDocument(raw):raw);await editor.load(hydrated);
+    document=editor.getDocument();
   }
   function exportLocal(){if(!document)return;downloadJson(currentDocument(),name.value);toast('JSON mit eingebetteten Bildern exportiert.');}
   function copyCurrent(){mapNameDialog({title:dirty?'Lokalen Stand als neuen Entwurf sichern':'Karte als neuen Entwurf kopieren',value:`${name.value.slice(0,65)} – Kopie`,submitLabel:'Kopie erstellen',onSubmit:async newName=>{
@@ -133,7 +136,7 @@ export function editorView({api,profile,status,toast,mapId}) {
   }
   async function initialize(){
     try{
-      if(status?.editorSchemaVersion!==CONFIG.editorSchemaVersion)throw new AppError('EDITOR_NOT_INSTALLED');
+      if(status?.editorSchemaVersion!==CONFIG.editorSchemaVersion||status?.editorFeaturesVersion!==CONFIG.editorFeaturesVersion)throw new AppError('EDITOR_NOT_INSTALLED');
       identity=await editorIdentity(profile.id,mapId);editorId=identity.id;assets=new MapAssets(api,mapId,editorId);
       if(closed){identity.release();return;}
       const mapPromise=api.authRpc('acquire_map_lock',{p_map_id:mapId,p_editor_id:editorId}).then(result=>{if(closed&&result.acquired)api.releaseMapLock(mapId,editorId).catch(()=>{});return result;});
@@ -147,13 +150,13 @@ export function editorView({api,profile,status,toast,mapId}) {
       if(closed){if(result.acquired)api.authRpc('release_map_lock',{p_map_id:mapId,p_editor_id:editorId}).catch(()=>{});return;}
       editor=interfaceReady;map=result.map;workingRevision=map.revision;acquired=result.acquired;leaseUntil=Date.parse(result.leaseUntil || 0);name.value=map.name;
       await installDocument(map.document);if(closed)return;
-      editor.onChange(()=>changed());editor.onExport(currentDocument);editor.onSave(()=>flush().catch(()=>{}));editor.onImport(imported=>{document.rules=structuredClone(imported.rules || defaultRules());document.allowedPowerups=[...(imported.allowedPowerups || ['extraLife','redDice','torch'])];});
+      editor.onChange(()=>changed());editor.onExport(currentDocument);editor.onSave(()=>flush().catch(()=>{}));editor.onImport(()=>{});
       applyMode();overlay.hidden=true;
       const local=await recovery.read().catch(()=>null),imported=pendingImports.get(mapId);pendingImports.delete(mapId);
       if(acquired&&(imported||local?.imported)){try{await installDocument(imported || local.document);changed();}catch(error){await recovery.clear().catch(()=>{});setFeedback(message,`Import fehlgeschlagen: ${error.message}. Die leere Karte bleibt bearbeitbar.`);}}
       else if(local)await recoveryDialog(local);
       if(!acquired)statusText(dirty?'Lokaler Entwurf · schreibgeschützt':map.status!=='draft'?'Fertige Karte · schreibgeschützt':`Ansehen · ${map.lock?.holder || 'anderer Spieler'} bearbeitet`,dirty?'pending':'saved');
-      else if(!dirty)statusText('Alle Änderungen gespeichert','saved');
+      else if(!dirty){if(acquired&&map.document.format!=='dungeon-layout-v7')changed();else statusText('Alle Änderungen gespeichert','saved');}
       heartbeatTimer=setInterval(()=>heartbeat(),25000);
       if(dirty&&acquired)saveTimer=setTimeout(()=>flush().catch(()=>{}),1200);
     }catch(error){if(!closed){overlay.hidden=true;setFeedback(message,error.message);statusText('Karte konnte nicht geöffnet werden','error');reconnect.hidden=false;}}
@@ -165,9 +168,9 @@ export function editorView({api,profile,status,toast,mapId}) {
   window.addEventListener('pagehide',pageHide);window.addEventListener('pageshow',pageShow);
   initialize();
   return {element,hasUnsavedChanges:()=>dirty||Boolean(savePromise),prepareLeave:async()=>{if(dirty&&acquired)await flush().catch(()=>{});},cleanup:()=>{
-    if(closed)return;backupNow();closed=true;clearTimeout(saveTimer);clearTimeout(backupTimer);clearInterval(heartbeatTimer);editor?.onChange(null);
+    if(closed)return;if(documentGlobal().fullscreenElement===element)documentGlobal().exitFullscreen().catch(()=>{});backupNow();closed=true;clearTimeout(saveTimer);clearTimeout(backupTimer);clearInterval(heartbeatTimer);editor?.onChange(null);
     identity?.release();
-    window.removeEventListener('online',resume);documentGlobal().removeEventListener('visibilitychange',visibility);documentGlobal().body.classList.remove('workshop-open');
+    documentGlobal().removeEventListener('fullscreenchange',fullscreenChanged);window.removeEventListener('online',resume);documentGlobal().removeEventListener('visibilitychange',visibility);documentGlobal().body.classList.remove('workshop-open');
     window.removeEventListener('pagehide',pageHide);window.removeEventListener('pageshow',pageShow);
     for(const d of documentGlobal().querySelectorAll('.workshop-dialog'))d.close();
     if(editorId)Promise.resolve(savePromise).catch(()=>{}).then(()=>api.authRpc('release_map_lock',{p_map_id:mapId,p_editor_id:editorId})).catch(()=>{});

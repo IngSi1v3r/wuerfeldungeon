@@ -1,11 +1,11 @@
 import {CONFIG} from '../config.js';
 
-export const POWERUPS=Object.freeze({extraLife:'Extraleben',redDice:'Roter Würfel',torch:'Fackel',axe:'Doppelhit'});
+export const POWERUPS=Object.freeze({extraLife:'Extraleben',redDice:'Roter Würfel',torch:'Fackel',axe:'Doppelhit',binocular:'Fernglas'});
 export const ENEMIES=['monster','miniboss','boss'];
 export const defaultRules=()=>({version:1,unlocks:[],customGoal:{type:'none',cellIds:[],diamonds:3},specialReward:{first:3,later:1}});
 export const emptyDocument=()=>({format:'dungeon-layout-v6',rooms:[],closedDoors:{},nextId:1,background:null,printLayout:{format:'auto',padding:24,name:'',board:{x:0,y:0,scale:1},title:{image:null,x:0,y:0,scale:1},rule:{image:null,x:0,y:0,scale:1}},rules:defaultRules(),allowedPowerups:['extraLife','redDice','torch']});
 export function imagesIn(document) {
-  return [...(document.rooms || []).map(r=>r.image),document.background?.image,document.printLayout?.title?.image,document.printLayout?.rule?.image].filter(Boolean);
+  return [...(document.rooms || []).flatMap(r=>[r.image,r.defeatedImage]),document.previewImage,document.background?.image,document.printLayout?.title?.image,document.printLayout?.rule?.image].filter(Boolean);
 }
 export function assetPath(src) {
   return typeof src==='string' && /^asset:[a-f0-9-]{36}\/[a-f0-9-]{36}\.(png|jpg|webp)$/.test(src) ? src.slice(6) : null;

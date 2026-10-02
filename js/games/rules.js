@@ -29,6 +29,17 @@ export function elapsedChoiceSeconds(game,now=Date.now(),offset=0) {
  return Math.max(0,Math.floor((end-Date.parse(game.choiceStartedAt))/1000));
 }
 
+export function gameWaitKind(game) {
+ if(game?.participants?.some(p=>p.active&&p.hasPendingPowerup)||game?.phase==='choosing')return 'turn';
+ return game?.phase==='waiting_roll'&&game.rollWaitStartedAt?'roll':null;
+}
+export function elapsedWaitSeconds(game,now=Date.now(),offset=0) {
+ const kind=gameWaitKind(game),start=kind==='roll'?game.rollWaitStartedAt:kind==='turn'?game.choiceStartedAt:null;
+ if(!start)return 0;
+ const end=game.status==='paused'?Date.parse(game.pausedAt):now+offset;
+ return Math.max(0,Math.floor((end-Date.parse(start))/1000));
+}
+
 export function cellReachable(definition,state,cellId){
  const id=String(cellId),reached=new Set((state?.reached||[]).map(String)),room=definition.document.rooms.find(r=>String(r.id)===id);
  if(!room||reached.has(id))return false;

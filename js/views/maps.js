@@ -1,3 +1,5 @@
+import {renderedPreview} from '../maps/preview.js';
+import {assetUrl} from '../maps/model.js';
 import {h,icon,feedback,setFeedback,pageHeading} from '../dom.js';
 import {AppError} from '../api.js';
 import {CONFIG} from '../config.js';
@@ -18,12 +20,18 @@ export function mapNameDialog({title='Neue Karte',value='',submitLabel='Karte er
   dialog.addEventListener('close',()=>dialog.remove(),{once:true});document.body.append(dialog);dialog.showModal();name.focus();return dialog;
 }
 
-export function miniature(rooms=[]) {
+export function miniature(rooms=[],previewImage=null) {
+  if(previewImage?.src){const img=h('img',{class:'map-miniature map-preview-image',src:previewImage.src.startsWith('asset:')?assetUrl(previewImage.src):previewImage.src,alt:'Kartenvorschau',loading:'lazy'});img.addEventListener('error',()=>img.replaceWith(miniature(rooms)),{once:true});return img;}
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('class','map-miniature');svg.setAttribute('aria-hidden','true');
   if(!rooms.length){svg.setAttribute('viewBox','0 0 160 96');const p=document.createElementNS(svg.namespaceURI,'path');p.setAttribute('d','M40 24h24v24H40z M64 36h24v24H64z M88 48h32v32H88z');p.setAttribute('fill','none');p.setAttribute('stroke','#749386');p.setAttribute('stroke-width','2');svg.append(p);return svg;}
   const x=Math.min(...rooms.map(r=>r.x)),y=Math.min(...rooms.map(r=>r.y)),right=Math.max(...rooms.map(r=>r.x+r.w)),bottom=Math.max(...rooms.map(r=>r.y+r.h));
   svg.setAttribute('viewBox',`${x-3} ${y-3} ${right-x+6} ${bottom-y+6}`);
   for(const r of rooms){const rect=document.createElementNS(svg.namespaceURI,'rect');for(const [key,val] of Object.entries({x:r.x,y:r.y,width:r.w,height:r.h,fill:r.start?'#9cbc78':({diamond:'#8bbed6',chest:'#d1b366',special:'#b29bcd',monster:'#ede3c7',miniboss:'#ede3c7',boss:'#cda563'})[r.type]||'#e5ece0',stroke:'#3c5449','stroke-width':.2,rx:.1}))rect.setAttribute(key,val);svg.append(rect);}return svg;
+}
+export function mapMiniature(api,map){
+  if(map.previewImage)return miniature(map.preview,map.previewImage);
+  const node=h('div',{class:'map-preview-wrap'},miniature(map.preview));
+  const observer=new IntersectionObserver(entries=>{if(!entries.some(e=>e.isIntersecting))return;observer.disconnect();renderedPreview(api,map).then(image=>{if(image&&node.isConnected)node.replaceChildren(miniature(map.preview,image));}).catch(()=>{});});observer.observe(node);return node;
 }
 export function mapsView({api,profile,status,toast}) {
   let maps=[],closed=false;
@@ -47,7 +55,7 @@ export function mapsView({api,profile,status,toast}) {
     count.textContent=`${selected.length} ${selected.length===1?'Karte':'Karten'}`;
     grid.replaceChildren(...selected.map(m=>{
       const published=m.status==='published',archived=m.status==='archived',badge=published?'Veröffentlicht':archived?'Archiviert':'Entwurf';
-      return h('article',{class:'map-card','data-map-id':m.id},h('a',{class:'map-card-preview',href:`#/editor?id=${m.id}`},miniature(m.preview),h('span',{class:`map-state ${m.status}`},published?icon('lock'):icon('map'),badge)),
+      return h('article',{class:'map-card','data-map-id':m.id},h('a',{class:'map-card-preview',href:`#/editor?id=${m.id}`},mapMiniature(api,m),h('span',{class:`map-state ${m.status}`},published?icon('lock'):icon('map'),badge)),
         h('div',{class:'map-card-body'},h('h2',{},m.name),h('p',{class:'map-author'},'Erstellt von ',m.creator),h('div',{class:'map-card-counts'},h('span',{},`${m.fields} Felder`),h('span',{},`${m.enemies} Gegner · ${m.bosses} Bosse`)),
           m.lock?h('p',{class:'map-lock-note'},icon('lock'),`${m.lock.holder} bearbeitet gerade`):h('p',{class:'map-lock-note muted'},published?'Für neue Spiele bereit':archived?'Bestehende Spielstände bleiben erhalten':'Für alle im Trupp bearbeitbar'),
           h('div',{class:'map-card-actions'},h('a',{class:'button primary',href:`#/editor?id=${m.id}`},published||archived||m.lock?'Ansehen':'Bearbeiten'),h('button',{class:'button secondary',onclick:()=>copy(m)},'Kopie'),

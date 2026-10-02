@@ -1,31 +1,33 @@
 import {h,icon,avatar,feedback,setFeedback,pageHeading} from '../dom.js';
 import {AppError} from '../api.js';
 import {CONFIG} from '../config.js';
-import {miniature} from './maps.js';
+import {miniature,mapMiniature} from './maps.js';
 import {GameCommands} from '../games/commands.js';
 import {watchGameChanges} from '../games/realtime.js';
 import {boardPreview} from '../games/board-preview.js';
 import {settingsBadges,liveIndicator,joinForm,gameStatusLabel,resultsDialog} from '../games/ui.js';
 import {powerupDialog} from '../games/powerups.js';
-import {cellReachable,ENEMY_TYPES} from '../games/rules.js';
+import {cellReachable,ENEMY_TYPES,gameWaitKind} from '../games/rules.js';
 import {turnPanel,redDiceDialog} from '../games/turn-panel.js';
+import {renderSection} from '../games/render.js';
 
 export function gameView(ctx) {
  const {api,profile,status,toast,gameId}=ctx;let closed=false,game=null,definition=null,board=null,currentMode=null,joining=false,confirming=false,lastEvent=null,torchMode=false,middleCellId=null,axeMode=false,torchActions=[],torchLoading=false,ownKey=null,powerDialog=null,powerKey=null,dismissedPowerKey=null,opponent=null,finishedShown=false;
  const commands=new GameCommands(api),message=feedback(),body=h('div',{id:'game-content'}),live=liveIndicator(),heading=h('div',{class:'game-heading'});
+ const roomRows=new Map(),roomPlayers=h('div',{class:'room-players',id:'game-players'}),roomOthers=h('div',{class:'room-others'}),roomControls=h('div',{class:'room-controls'});
  const playInstalled=status?.playSchemaVersion===CONFIG.playSchemaVersion;
  const rulesInstalled=status?.rulesSchemaVersion===CONFIG.rulesSchemaVersion;
  const panel=turnPanel({profile,onTorch:rulesInstalled?toggleTorch:null,onAxe:rulesInstalled?()=>{axeMode=!axeMode;torchMode=false;middleCellId=null;render();}:null,onChoosePowerup:rulesInstalled?()=>openPowerup(true):null,onRoll:()=>command('roll_game_dice',{p_game_id:gameId,p_round:game.round}),onLoseLife:()=>{
   if(confirm('Ein Leben verlieren und diesen Zug beenden? Deine Powerup-Verwendungen bleiben erhalten.'))playTurn(null,'lose_life');
  },onResolveWait:(id,action)=>{
-  if(confirm(action==='remove'?'Diesen Spieler aus dem laufenden Spiel entfernen?':'Diesen offenen Zug ohne Lebensabzug überspringen? Eine noch offene Powerup-Auswahl verfällt dabei.'))command('resolve_game_wait',{p_game_id:gameId,p_round:game.round,p_target_player_id:id,p_action:action});
+  if(confirm(action==='remove'?'Diesen Spieler aus dem laufenden Spiel entfernen?':gameWaitKind(game)==='roll'?'Diesen Wurf an den nächsten aktiven Spieler weitergeben? Der Spieler bleibt im Spiel und kann danach seinen Zug machen.':'Diesen offenen Zug ohne Lebensabzug überspringen? Eine noch offene Powerup-Auswahl verfällt dabei.'))command('resolve_game_wait',{p_game_id:gameId,p_round:game.round,p_target_player_id:id,p_action:action});
  }});
  const element=h('section',{class:'game-view'},h('div',{class:'play-toolbar'},h('a',{class:'button secondary',href:'#/play'},icon('back'),'Spielauswahl'),live.element,
   h('button',{class:'button secondary',title:'Spiel aktualisieren',id:'refresh-game',onclick:()=>watch.refresh()},'↻')),heading,message,body);
  async function command(name,params,after) {
   if(commands.busy)return;
   try {const task=commands.run(name,params);render();const result=await task;if(closed)return;setFeedback(message,'');if(after)await after();else await watch.refresh();return result;}
-  catch(error){if(!closed){if(error.code!=='GAME_RED_CONFIRMATION')setFeedback(message,error.message);if(['GAME_CHANGED','GAME_ALREADY_STARTED','GAME_CLOSED','GAME_ROUND_CHANGED','GAME_STATE_CHANGED','GAME_TURN_DONE','GAME_ALREADY_ROLLED','GAME_PAUSED','GAME_POWERUP_PENDING','GAME_CHEST_INVALID'].includes(error.code))await watch.refresh();}return {error};}
+  catch(error){if(!closed){if(error.code!=='GAME_RED_CONFIRMATION')setFeedback(message,error.message);if(['GAME_CHANGED','GAME_ALREADY_STARTED','GAME_CLOSED','GAME_ROUND_CHANGED','GAME_STATE_CHANGED','GAME_TURN_DONE','GAME_ALREADY_ROLLED','GAME_ROLLER_ONLY','GAME_PAUSED','GAME_POWERUP_PENDING','GAME_CHEST_INVALID'].includes(error.code))await watch.refresh();}return {error};}
   finally {if(!closed&&game)render();}
  }
  async function playTurn(cellId,action='cell') {
@@ -99,17 +101,43 @@ export function gameView(ctx) {
    }return article;
   }));
  }
+ function updateRoomPlayers(){
+  const participants=game.participants.filter(p=>p.id!==profile.id),ids=new Set(participants.map(p=>p.id)),host=game.host.id===profile.id;
+  for(const [id,row] of roomRows)if(!ids.has(id)){row.article.remove();roomRows.delete(id);}
+  for(const p of participants){
+   let row=roomRows.get(p.id);
+   if(!row){
+    const name=h('strong'),role=h('span',{class:'muted'}),score=h('small',{class:'opponent-score'}),picture=avatar(p),actions=h('div',{class:'player-actions'}),roller=h('span',{class:'roller-indicator',title:'Mit Würfeln dran','aria-label':'Mit Würfeln dran',hidden:true},icon('dice'));
+    const article=h('article',{class:'lobby-player','data-player-id':p.id},picture,h('div',{class:'lobby-player-copy'},name,role,score),roller,actions);
+    row={article,name,role,score,picture,actions,roller,avatarKey:JSON.stringify([p.displayName,p.avatarPath]),mini:null};roomRows.set(p.id,row);
+   }
+   const avatarKey=JSON.stringify([p.displayName,p.avatarPath]);if(row.avatarKey!==avatarKey){const picture=avatar(p);row.picture.replaceWith(picture);row.picture=picture;row.avatarKey=avatarKey;}
+   renderSection(row.name,p.displayName,()=>p.displayName);renderSection(row.role,p.id===game.host.id,()=>p.id===game.host.id?'Host':'Mitspieler');
+   const text=`${p.points||0} Punkte · ${p.eliminated?'ausgeschieden':p.hasPendingPowerup?'wählt Powerup':game.phase==='choosing'?(p.turnDone?'Zug gespeichert':'wählt noch'):'bereit'}`;
+   renderSection(row.score,text,()=>text);row.roller.hidden=p.id!==game.rollerId;
+   renderSection(row.actions,[host,game.status,commands.busy],()=>host&&!['finished','cancelled'].includes(game.status)?h('button',{class:'text-button',disabled:commands.busy,onclick:()=>manage('host',p.id)},'Host übergeben'):null);
+   row.actions.hidden=!host||['finished','cancelled'].includes(game.status);
+   if(game.settings.cards==='open'){
+    if(!row.mini){const mini=board?.thumbnail(opponentView(p.id));if(mini){row.mini=h('button',{class:'opponent-miniature',type:'button',onclick:()=>openOpponent(game.participants.find(player=>player.id===p.id))},mini);row.article.append(row.mini);}}
+    else board?.thumbnail(opponentView(p.id),row.mini.firstElementChild);
+    const label=`Spielplan von ${p.displayName} vergrößern`;if(row.mini&&row.mini.getAttribute('aria-label')!==label)row.mini.setAttribute('aria-label',label);
+   }
+  }
+  // Nur bei einer geänderten Reihenfolge bewegen; Realtime darf Bilder und
+  // einen fokussierten Vorschauknopf nicht aus dem DOM herausnehmen.
+  participants.forEach((p,i)=>{const row=roomRows.get(p.id).article;if(roomPlayers.children[i]!==row)roomPlayers.insertBefore(row,roomPlayers.children[i]||null);});
+ }
  async function invite() {
   try {await navigator.clipboard.writeText(location.href);toast('Einladungslink kopiert.');}catch{prompt('Diesen Link an deine Freunde weitergeben:',location.href);}
  }
  function render() {
   if(!game||closed)return;const lobby=game.status==='lobby',host=game.host.id===profile.id,ended=['cancelled','finished'].includes(game.status);
-  heading.replaceChildren(pageHeading(lobby?'Euer Warteraum':'Euer Spielraum',game.name,`${game.map.name} · Host: ${game.host.displayName}`),h('span',{class:`game-status ${game.status}`,id:'game-status'},gameStatusLabel(game)),settingsBadges(game.settings));
+  renderSection(heading,[lobby,game.name,game.map.name,game.host.displayName,game.status,game.settings],()=>[pageHeading(lobby?'Euer Warteraum':'Euer Spielraum',game.name,`${game.map.name} · Host: ${game.host.displayName}`),h('span',{class:`game-status ${game.status}`,id:'game-status'},gameStatusLabel(game)),settingsBadges(game.settings)]);
   const mode=lobby?'lobby':'room';
   if(currentMode!==mode){currentMode=mode;body.replaceChildren();}
   if(lobby) {
    body.replaceChildren(h('div',{class:'lobby-layout'},h('div',{class:'panel lobby-roster'},h('div',{class:'game-title-row'},h('h2',{},'Euer Trupp'),h('span',{class:'badge',id:'game-player-count'},`${game.playerCount} / ${game.settings.maxPlayers}`)),players(true)),
-    h('aside',{class:'panel lobby-map'},miniature(game.map.preview),h('h2',{},game.map.name),h('p',{class:'muted'},`${game.map.fields} Felder · ${game.map.enemies} Gegner`),
+    h('aside',{class:'panel lobby-map'},mapMiniature(api,game.map),h('h2',{},game.map.name),h('p',{class:'muted'},`${game.map.fields} Felder · ${game.map.enemies} Gegner`),
      h('p',{class:'muted'},game.passwordRequired?'Dieser Warteraum ist mit einem Passwort geschützt.':'Freunde können ohne Spielpasswort beitreten.'),h('button',{class:'button secondary',onclick:invite},icon('upload'),'Einladungslink kopieren'))),
     h('div',{class:'lobby-controls panel'},h('div',{},h('h2',{},host?'Alle da?':'Wir warten auf den Start.'),h('p',{class:'muted'},host?'Mit dem Start wird der Warteraum geschlossen. Später können die Teilnehmer ihren Spielraum jederzeit wieder öffnen.':`${game.host.displayName} startet, sobald euer Trupp bereit ist.`)),
      h('div',{class:'button-row'},host?h('button',{id:'start-game',class:'button primary',disabled:commands.busy,onclick:()=>command('start_game',{p_game_id:gameId,p_expected_revision:game.revision})},icon('dice'),'Spiel starten'):null,
@@ -118,12 +146,13 @@ export function gameView(ctx) {
       }},'Warteraum verlassen'))));
   } else {
    let top=body.querySelector('.room-management');
-   if(!top){top=h('div',{class:'room-management'});body.append(top);}
-   top.replaceChildren(h('div',{class:'room-others'},game.participants.length>1?players(false):h('p',{class:'muted'},'Du bist allein in dieser Runde.')),
-    h('div',{class:'room-controls'},h('p',{class:'phase-note',id:'game-phase-note'},ended?(game.status==='cancelled'?'Ohne Wertung abgebrochen.':'Dieses Abenteuer ist abgeschlossen.'):!playInstalled?'Zum Würfeln bitte 008_phase4.sql installieren.':`Regelkern aktiv · ${game.settings.hints?'Spielbare Felder sind grün umrandet, zusätzliche rote Möglichkeiten rot.':'Ohne Tipps: passende Felder selbst suchen.'}${rulesInstalled?'':' Powerups und Schlusswertung benötigen 010_phase5.sql.'}`),
+   if(!top){top=h('div',{class:'room-management'},roomOthers,roomControls);body.append(top);}
+   renderSection(roomOthers,game.participants.length>1,()=>game.participants.length>1?roomPlayers:h('p',{class:'muted'},'Du bist allein in dieser Runde.'));updateRoomPlayers();
+   renderSection(roomControls,[host,ended,game.status,playInstalled,rulesInstalled,game.settings.hints,commands.busy],()=>[
+    h('p',{class:'phase-note',id:'game-phase-note'},ended?(game.status==='cancelled'?'Ohne Wertung abgebrochen.':'Dieses Abenteuer ist abgeschlossen.'):!playInstalled?'Zum Würfeln bitte 008_phase4.sql installieren.':`Regelkern aktiv · ${game.settings.hints?'Spielbare Felder sind grün umrandet, zusätzliche rote Möglichkeiten rot.':'Ohne Tipps: passende Felder selbst suchen.'}${rulesInstalled?'':' Powerups und Schlusswertung benötigen 010_phase5.sql.'}`),
      h('div',{class:'button-row'},host&&!ended?h('button',{id:'pause-game',class:'button secondary',disabled:commands.busy,onclick:()=>manage(game.status==='paused'?'resume':'pause')},game.status==='paused'?'Pause beenden':'Für alle pausieren'):null,
       host&&!ended?h('button',{id:'cancel-game',class:'text-button',disabled:commands.busy,onclick:()=>manage('cancel')},'Spiel abbrechen'):null,
-      ended?h('button',{class:'button secondary',onclick:async()=>{try{const data=await api.authRpc('get_game_result',{p_game_id:gameId});if(!closed)resultsDialog(data.game);}catch(error){setFeedback(message,error.message);}}},'Chronik ansehen'):null)));
+      ended?h('button',{class:'button secondary',onclick:async()=>{try{const data=await api.authRpc('get_game_result',{p_game_id:gameId});if(!closed)resultsDialog(data.game);}catch(error){setFeedback(message,error.message);}}},'Chronik ansehen'):null)]);
    if(!board&&definition){board=boardPreview(api,definition,{onCell:chooseCell,onReady:()=>{if(!closed)render();}});
     if(playInstalled){body.append(panel.element,h('div',{class:'room-play'},board.element,panel.lives),panel.score);}else body.append(board.element);
    }

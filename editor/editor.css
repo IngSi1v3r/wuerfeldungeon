@@ -118,3 +118,9 @@
 
 
 .online-readonly [data-add],.online-readonly #newProject,.online-readonly #importProject,.online-readonly #randomNumbers,.online-readonly #undo,.online-readonly #redo,.online-readonly #backgroundButton{display:none}
+
+/* Match the camp toolbar; the drawing canvas stays neutral. */
+.toolbar{background:linear-gradient(120deg,#173e30,#315e45);color:#eef4da;border-bottom:1px solid #9ea972;box-shadow:0 4px 18px #123a3029}
+.toolbar .group{border-color:#74957266}.toolbar button{background:#eef1dd;color:#294332;border-color:#abbb93}.toolbar .primary{background:#d5b666;color:#213c2c;border-color:#d5b666}.toolbar button:hover,.toolbar .primary:hover{background:#f4e7b5;color:#213c2c}
+.room.rune .room-body{fill:#f4efff}.room.bonus .room-body{fill:white}.room.trap .room-body{fill:#fff1eb}.room.portal .room-body{fill:#e9f5f1}.room.crazy .room-body{fill:#fdf1ff}.room.goldSack .room-body,.room.goldCoin .room-body{fill:#fff9da}
+.menu select{font:inherit;width:100%;padding:6px;border:1px solid #cad4dc;border-radius:6px}.menu label:has(#defeatedPreview){display:flex;gap:6px;align-items:center}.menu #defeatedPreview{width:auto}

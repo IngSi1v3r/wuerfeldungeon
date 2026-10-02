@@ -15,9 +15,10 @@
       <button class="primary" data-add="normal" title="4 × 4 Rastereinheiten">+ Feld</button>
       <button data-add="diamond" title="4 × 8 Rastereinheiten">+ Diamant</button>
       <button data-add="chest" title="4 × 8 Rastereinheiten, größenveränderbar">+ Schatzkiste</button>
-      <button data-add="special" title="4 × 4 Rastereinheiten">+ Spezial X</button>
+      <button data-add="rune" title="4 × 4 Rastereinheiten">+ Rune</button>
       <button data-add="monster" title="8 × 8 Rastereinheiten">+ Monster</button>
-      <button data-add="miniboss" title="8 × 8 Rastereinheiten, bis 4 × 4 verkleinerbar">+ Mini-Boss</button>
+      <button data-add="bonus" title="8 × 8 Rastereinheiten, bis 4 × 4 verkleinerbar">+ Bonusaufgabe</button>
+      <button data-add="trap">+ Falle</button><button data-add="portal">+ Portal</button><button data-add="crazy">+ Verrücktes Feld</button><button data-add="goldSack">+ Goldsack</button><button data-add="goldCoin">+ Goldmünze</button>
       <button data-add="boss" title="16 × 8 Rastereinheiten">+ Boss</button>
     </div>
     <div class="group">
@@ -62,11 +63,14 @@
           <label>Belohnung 1 · Diamanten<input id="rewardFirst" type="number" min="0" max="999" step="1" inputmode="numeric"></label>
           <label>Belohnung 2 · Diamanten<input id="rewardLater" type="number" min="0" max="999" step="1" inputmode="numeric"></label>
         </div>
-        <p class="hint">1: erster Spieler · 2: alle weiteren Spieler.<br>Graue Zahlen markieren Freischaltbedingungen; diese werden hier nicht automatisch verknüpft.</p>
+        <p class="hint">1: erster Spieler · 2: alle weiteren Spieler.<br>Graue Wegfelder und Runen verknüpfen die passende Zahl automatisch.</p>
         <label>Gegnerbild auswählen / ersetzen<input id="enemyImageInput" type="file" accept="image/png,image/jpeg,image/webp"></label>
         <div class="image-actions"><button id="editEnemyImage" type="button">Bild positionieren / skalieren</button><button id="removeEnemyImage" type="button">Bild entfernen</button></div>
+        <label>Besiegtes Bild auswählen / ersetzen<input id="defeatedImageInput" type="file" accept="image/png,image/jpeg,image/webp"></label>
+        <label><input id="defeatedPreview" type="checkbox">Besiegtes Bild in der Zeichenfläche anzeigen</label><button id="removeDefeatedImage">Besiegtes Bild entfernen</button><p id="defeatedStatus" class="hint" role="status"></p>
         <p id="enemyImageStatus" class="hint" role="status"></p>
       </div>
+      <div id="trapForm" class="enemy-form" hidden><label>Fallenkosten<select id="trapKind"><option value="diamonds">Diamanten</option><option value="life">Leben</option></select></label><label>Anzahl<input id="trapCost" type="number" min="1" max="99" step="1"></label></div>
       <label class="start-check"><input id="startField" type="checkbox">Startfeld (grün)</label>
       <label class="start-check" id="dimmedFieldLabel"><input id="dimmedField" type="checkbox">Ausgegraut</label>
       <p id="sizeHint" class="hint"></p>
@@ -78,7 +82,7 @@
 <dialog id="fileDialog" aria-labelledby="fileTitle">
   <div class="dialog-head"><h2 id="fileTitle">Projekt speichern</h2><button id="closeFile" aria-label="Dialog schließen">Schließen</button></div>
   <section id="savePanel" hidden>
-    <p>Die JSON-Datei enthält alle Felder, Pasch-Auswahlen, Größen, Start- und Graumarkierungen, Durchgänge sowie Monster- und Bossdaten inklusive der Positionen und Größen ihrer Bilder. Drucklayout, Levelname, Titelbild und Spezialregelbild werden ebenfalls mitgespeichert. Alle Bilder sind direkt eingebettet – es werden keine zusätzlichen Bilddateien benötigt. Ältere Projekte bleiben ladbar.</p>
+    <p>Die JSON-Datei enthält alle Felder, Pasch-Auswahlen, Größen, Start- und Graumarkierungen, Durchgänge sowie Monster- und Bossdaten inklusive der Positionen und Größen ihrer Bilder. Drucklayout, Levelname, Titelbild und Bonusaufgabebild werden ebenfalls mitgespeichert. Alle Bilder sind direkt eingebettet – es werden keine zusätzlichen Bilddateien benötigt. Ältere Projekte bleiben ladbar.</p>
     <div class="actions"><a id="projectDownload" class="file-link" download="Dungeon_Layout.json">JSON herunterladen</a><button id="nativeSave">Speichern unter…</button></div>
     <details><summary>Alternativ: Projekttext kopieren</summary><textarea id="saveText" readonly aria-label="Projekt als JSON"></textarea><div class="actions"><button id="copyProject">Projekttext kopieren</button></div></details>
     <p class="note">Downloads landen je nach Browsereinstellung im Downloadordner oder im gewählten Ordner. Die automatische Browsersicherung ist davon unabhängig. Falls die Vorschau Downloads blockiert, öffne die HTML-Datei lokal im Browser oder kopiere den Projekttext.</p>
@@ -133,12 +137,12 @@
       </fieldset>
       <fieldset><legend>Spezialpunkte · unten links</legend>
         <p id="layoutSpecialCount"></p>
-        <p class="layout-small">Rahmen 1: alle X-Felder samt Zahl, daneben freie Abhak-Kästchen. Fehlende Zahlen bleiben leer. Belohnung: 3 ♦ / 1 ♦.</p>
+        <p class="layout-small">Rahmen 1 zeigt die erste gewählte Bonusaufgabe, ihre Zielfelder und ihre Belohnungen.</p>
         <label>Regelbild für Rahmen 2<input id="layoutRuleInput" type="file" accept="image/png,image/jpeg,image/webp"></label>
         <button data-layout-target="rule">Regelbild ausrichten</button>
         <button data-layout-reset="rule">Einpassen</button><button data-layout-remove="rule">Entfernen</button>
         <label>Bildgröße<input id="layoutRuleScale" type="range" min="10" max="300" step="1"></label>
-        <p class="layout-small">Rahmen 2: deine individuelle Regelgrafik. Darunter ebenfalls fest 3 ♦ / 1 ♦. PNG, JPG oder WebP, jeweils maximal 20 MB.</p>
+        <p class="layout-small">Rahmen 2 zeigt die zweite Bonusaufgabe. Optional ersetzt deine Regelgrafik die Zielfelder; Aufgabe und gewählte Belohnungen bleiben sichtbar. PNG, JPG oder WebP, maximal 20 MB.</p>
       </fieldset>
     </aside>
     <div id="layoutStage"><canvas id="layoutCanvas" aria-label="Drucklayout-Vorschau"></canvas></div>
@@ -148,6 +152,6 @@
 <div id="layoutPrintSheet" aria-hidden="true"><img id="layoutPrintImage" alt="Vollständiger Spielbogen"></div>
 
 <div class="toast" id="toast" role="status" hidden></div>
-<script src="./editor.js" defer></script>
+<script src="./editor.js" type="module"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 import {h,icon,feedback,setFeedback,pageHeading} from '../dom.js';
 import {AppError} from '../api.js';
 import {CONFIG} from '../config.js';
-import {miniature} from './maps.js';
+import {miniature,mapMiniature} from './maps.js';
 import {GameCommands} from '../games/commands.js';
 import {gameLink} from '../games/ui.js';
 
@@ -31,7 +31,7 @@ export function newGameView({api,status}) {
    const data=await api.authRpc('list_game_maps');if(closed)return;
    grid.replaceChildren(...data.maps.map(m=>{const button=h('button',{type:'button',class:'game-map-choice','data-version-id':m.versionId,'aria-pressed':'false',onclick:()=>{
     selected=m;for(const b of grid.querySelectorAll('button')){const yes=b===button;b.classList.toggle('selected',yes);b.setAttribute('aria-pressed',String(yes));}name.value=m.name;selectedLabel.textContent=m.name;form.hidden=false;submit.disabled=false;
-   }},miniature(m.preview),h('strong',{},m.name),h('span',{class:'muted'},`${m.fields} Felder · ${m.enemies} Gegner`));return button;}));
+   }},mapMiniature(api,m),h('strong',{},m.name),h('span',{class:'muted'},`${m.fields} Felder · ${m.enemies} Gegner`));return button;}));
    if(!data.maps.length)grid.append(h('div',{class:'panel game-empty'},icon('map'),h('h2',{},'Die erste Welt fehlt noch.'),h('p',{class:'muted'},'Veröffentliche zuerst eine Karte in der Kartenwerkstatt.'),h('a',{class:'button secondary',href:'#/editor'},'Kartenwerkstatt öffnen')));
   } catch(error){if(!closed)setFeedback(message,error.message);}
  }
