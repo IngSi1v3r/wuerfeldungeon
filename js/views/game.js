@@ -5,9 +5,9 @@ import {miniature,mapMiniature} from './maps.js';
 import {GameCommands} from '../games/commands.js';
 import {watchGameChanges} from '../games/realtime.js';
 import {boardPreview} from '../games/board-preview.js';
-import {settingsBadges,liveIndicator,joinForm,gameStatusLabel,resultsDialog} from '../games/ui.js';
+import {settingsBadges,liveIndicator,joinForm,gameStatusLabel,resultsDialog,lobbyRules,lifeLossDialog} from '../games/ui.js';
 import {powerupDialog} from '../games/powerups.js';
-import {cellReachable,ENEMY_TYPES,gameWaitKind} from '../games/rules.js';
+import {cellReachable,ENEMY_TYPES,gameWaitKind,fieldHints} from '../games/rules.js';
 import {turnPanel,redDiceDialog} from '../games/turn-panel.js';
 import {renderSection} from '../games/render.js';
 
@@ -40,7 +40,7 @@ export function gameView(ctx) {
  }
  async function toggleTorch(){
   torchMode=!torchMode;middleCellId=null;axeMode=false;torchActions=[];render();
-  if(!torchMode||!game.settings.hints)return;
+  if(!torchMode||!fieldHints(game.settings))return;
   torchLoading=true;const key=ownKey;
   try{const data=await api.authRpc('get_torch_options',{p_game_id:gameId,p_round:game.round,p_state_revision:game.turn.ownRevision});
    if(!closed&&torchMode&&key===ownKey)torchActions=data.actions;
@@ -71,8 +71,8 @@ export function gameView(ctx) {
    if(result?.error)throw result.error;return Boolean(result?.ok);
   },onClose:()=>{if(powerDialog===dialog){powerDialog=null;dismissedPowerKey=key;}}});powerDialog=dialog;
  }
- function claimsFor(playerId){return (game.claims||[]).map(claim=>({...claim,ownFirst:claim.playerId===playerId}));}
- function opponentView(id){const state=game.states?.find(s=>s.playerId===id)?.state;return {state,claims:claimsFor(id),markStyle:'pencil',interactive:false,hints:false};}
+ function claimsFor(playerId){const state=game.states?.find(s=>s.playerId===playerId)?.state;return (game.claims||[]).map(claim=>({...claim,ownFirst:game.rulesVersion>=7?state?.firstKills?.includes(String(claim.cellId)):claim.playerId===playerId}));}
+ function opponentView(id){const entry=game.states?.find(s=>s.playerId===id);return {state:entry?.state,claims:claimsFor(id),markStyle:'pencil',interactive:false,hints:false,fog:game.settings.fog&&game.status!=='finished',visibleCells:entry?.visibleCells,roundRequirements:game.roundRequirements,traps:game.traps};}
  function openOpponent(player){
   if(game.settings.cards!=='open'||!board?.getTemplate())return;
   opponent?.dialog.close();
@@ -138,7 +138,7 @@ export function gameView(ctx) {
   if(lobby) {
    body.replaceChildren(h('div',{class:'lobby-layout'},h('div',{class:'panel lobby-roster'},h('div',{class:'game-title-row'},h('h2',{},'Euer Trupp'),h('span',{class:'badge',id:'game-player-count'},`${game.playerCount} / ${game.settings.maxPlayers}`)),players(true)),
     h('aside',{class:'panel lobby-map'},mapMiniature(api,game.map),h('h2',{},game.map.name),h('p',{class:'muted'},`${game.map.fields} Felder · ${game.map.enemies} Gegner`),
-     h('p',{class:'muted'},game.passwordRequired?'Dieser Warteraum ist mit einem Passwort geschützt.':'Freunde können ohne Spielpasswort beitreten.'),h('button',{class:'button secondary',onclick:invite},icon('upload'),'Einladungslink kopieren'))),
+     lobbyRules(definition),h('p',{class:'muted'},game.passwordRequired?'Dieser Warteraum ist mit einem Passwort geschützt.':'Freunde können ohne Spielpasswort beitreten.'),h('button',{class:'button secondary',onclick:invite},icon('upload'),'Einladungslink kopieren'))),
     h('div',{class:'lobby-controls panel'},h('div',{},h('h2',{},host?'Alle da?':'Wir warten auf den Start.'),h('p',{class:'muted'},host?'Mit dem Start wird der Warteraum geschlossen. Später können die Teilnehmer ihren Spielraum jederzeit wieder öffnen.':`${game.host.displayName} startet, sobald euer Trupp bereit ist.`)),
      h('div',{class:'button-row'},host?h('button',{id:'start-game',class:'button primary',disabled:commands.busy,onclick:()=>command('start_game',{p_game_id:gameId,p_expected_revision:game.revision})},icon('dice'),'Spiel starten'):null,
       h('button',{id:'leave-lobby',class:'button secondary',disabled:commands.busy,onclick:()=>{
@@ -149,14 +149,14 @@ export function gameView(ctx) {
    if(!top){top=h('div',{class:'room-management'},roomOthers,roomControls);body.append(top);}
    renderSection(roomOthers,game.participants.length>1,()=>game.participants.length>1?roomPlayers:h('p',{class:'muted'},'Du bist allein in dieser Runde.'));updateRoomPlayers();
    renderSection(roomControls,[host,ended,game.status,playInstalled,rulesInstalled,game.settings.hints,commands.busy],()=>[
-    h('p',{class:'phase-note',id:'game-phase-note'},ended?(game.status==='cancelled'?'Ohne Wertung abgebrochen.':'Dieses Abenteuer ist abgeschlossen.'):!playInstalled?'Zum Würfeln bitte 008_phase4.sql installieren.':`Regelkern aktiv · ${game.settings.hints?'Spielbare Felder sind grün umrandet, zusätzliche rote Möglichkeiten rot.':'Ohne Tipps: passende Felder selbst suchen.'}${rulesInstalled?'':' Powerups und Schlusswertung benötigen 010_phase5.sql.'}`),
+    h('p',{class:'phase-note',id:'game-phase-note'},ended?(game.status==='cancelled'?'Ohne Wertung abgebrochen.':'Dieses Abenteuer ist abgeschlossen.'):!playInstalled?'Zum Würfeln bitte 008_phase4.sql installieren.':rulesInstalled?'':'Powerups und Schlusswertung benötigen 010_phase5.sql.'),
      h('div',{class:'button-row'},host&&!ended?h('button',{id:'pause-game',class:'button secondary',disabled:commands.busy,onclick:()=>manage(game.status==='paused'?'resume':'pause')},game.status==='paused'?'Pause beenden':'Für alle pausieren'):null,
       host&&!ended?h('button',{id:'cancel-game',class:'text-button',disabled:commands.busy,onclick:()=>manage('cancel')},'Spiel abbrechen'):null,
       ended?h('button',{class:'button secondary',onclick:async()=>{try{const data=await api.authRpc('get_game_result',{p_game_id:gameId});if(!closed)resultsDialog(data.game);}catch(error){setFeedback(message,error.message);}}},'Chronik ansehen'):null)]);
    if(!board&&definition){board=boardPreview(api,definition,{onCell:chooseCell,onReady:()=>{if(!closed)render();}});
     if(playInstalled){body.append(panel.element,h('div',{class:'room-play'},board.element,panel.lives),panel.score);}else body.append(board.element);
    }
-   if(playInstalled){panel.update(game,commands.busy||confirming,{torch:torchMode,middleCellId,axe:axeMode});board?.update({state:game.ownState,hints:game.settings.hints,actions:highlightedActions(),middleCellId,claims:game.claims,markStyle:profile.preferences?.markStyle,interactive:game.turn?.canAct&&!commands.busy&&!confirming&&!torchLoading});}
+   if(playInstalled){panel.update({...game,definition},commands.busy||confirming,{torch:torchMode,middleCellId,axe:axeMode});board?.update({state:game.ownState,hints:fieldHints(game.settings),actions:highlightedActions(),middleCellId,claims:game.claims,markStyle:profile.preferences?.markStyle,interactive:game.turn?.canAct&&!commands.busy&&!confirming&&!torchLoading,fog:game.settings.fog&&game.status!=='finished',visibleCells:game.visibleCells,roundRequirements:game.roundRequirements,traps:game.traps});}
    opponent?.preview.update(opponentView(opponent.id));
   }
  }
@@ -171,9 +171,13 @@ export function gameView(ctx) {
    if(powerDialog&&(powerKey!==nextPowerKey||game.status!=='playing'))powerDialog.close();
    setFeedback(message,'');render();openPowerup();
    if(game.status==='finished'&&!finishedShown){finishedShown=true;resultsDialog(game);const data=await api.authRpc('get_player_profile');if(!closed)ctx.updateProfile(data.profile);}
-   if(lastEvent!==null)for(const event of game.events||[]){if(Number(event.id)<=lastEvent)continue;
-    if(event.kind==='enemy_defeated'){const name=game.participants.find(p=>p.id===event.payload.playerId)?.displayName;toast(name?`${name} hat ${event.payload.name} besiegt.`:`${event.payload.name} wurde besiegt.`);}
-    if(event.kind==='life_lost')toast(event.payload.automatic?'Kein legaler Zug möglich: ein Leben verloren.':'Ein Leben verloren.');
+   if(lastEvent!==null){const fresh=(game.events||[]).filter(event=>Number(event.id)>lastEvent).sort((a,b)=>Number(a.id)-Number(b.id));
+    for(const event of fresh){
+     if(['enemy_defeated','bonus_completed'].includes(event.kind)){const name=game.participants.find(p=>p.id===event.payload.playerId)?.displayName;toast(event.kind==='bonus_completed'?(name?`${name} hat ${event.payload.name} abgeschlossen.`:`${event.payload.name} wurde abgeschlossen.`):name?`${name} hat ${event.payload.name} besiegt.`:`${event.payload.name} wurde besiegt.`);}
+     if(event.kind==='trap_triggered'&&event.payload.costKind==='diamonds')toast(`Falle: ${event.payload.cost} Diamanten verloren.`);
+     if(event.kind==='life_lost')toast(event.payload.cause==='trap'?`Falle: ${event.payload.amount} Leben verloren.`:event.payload.automatic?'Kein legaler Zug möglich: ein Leben verloren.':'Ein Leben verloren.');
+    }
+    const losses=fresh.filter(e=>e.kind==='life_lost');if(losses.length&&game.rulesVersion>=7&&game.status!=='finished'&&!document.querySelector('.life-loss-dialog'))lifeLossDialog(losses);
    }
    lastEvent=Math.max(lastEvent||0,...(game.events||[]).map(e=>Number(e.id)));
   } catch(error) {

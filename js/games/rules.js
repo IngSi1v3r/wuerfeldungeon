@@ -1,5 +1,5 @@
 // Darstellungshilfen. Die verbindliche Zugprüfung findet in PostgreSQL statt.
-export const ENEMY_TYPES=new Set(['monster','miniboss','boss']);
+export const ENEMY_TYPES=new Set(['monster','miniboss','boss','bonus']);
 export function sortRequirements(values=[]) {
  return [...new Set(values.map(String))].sort((a,b)=>a==='doubles'?1:b==='doubles'?-1:Number(a)-Number(b));
 }
@@ -17,10 +17,12 @@ export function lifePenalty(state) {
  const effective=Math.max(0,(state?.lostLives||0)-(state?.extraLives||0));
  return [0,0,0,-1,-2,-4,-6,-9,-12,-16,-20,-20][Math.min(11,effective)];
 }
-export const pointsSoFar=state=>(state?.diamonds||0)*3+lifePenalty(state);
+export const pointsSoFar=state=>(state?.diamonds||0)*3+(state?.goldPoints||0)+lifePenalty(state);
+export const diceHints=settings=>settings?.diceHints??settings?.hints??false;
+export const fieldHints=settings=>settings?.fieldHints??settings?.hints??false;
 export const requirementLabel=value=>value==='doubles'?'⚄ = ⚄':String(value);
 export function roomLabel(room) {
- const type={normal:'Wegfeld',diamond:'Diamantfeld',chest:'Schatzkiste',special:'Spezialfeld',monster:'Monster',boss:'Boss',miniboss:'Mini-Boss'}[room.type]||'Feld';
+ const type={normal:'Wegfeld',diamond:'Diamantfeld',chest:'Schatzkiste',special:'Spezialfeld',monster:'Monster',boss:'Boss',miniboss:'Mini-Boss',rune:'Runenfeld',bonus:'Bonusaufgabe',trap:'Falle',portal:'Portal',crazy:'Verrücktes Feld',goldSack:'Goldsack',goldCoin:'Goldmünze'}[room.type]||'Feld';
  return `${type} ${room.name||`#${room.id}`}${room.number!=null?` · ${room.number==='doubles'?'Pasch':room.number}`:''}`;
 }
 export function elapsedChoiceSeconds(game,now=Date.now(),offset=0) {

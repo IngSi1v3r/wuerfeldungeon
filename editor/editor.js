@@ -1016,6 +1016,9 @@ if(saved){const raw=JSON.parse(saved),state=validateProject({...raw,format:raw.f
       nextId=Math.max(...rooms.map(r=>r.id),0)+1;selected.clear();history=[];future=[];backgroundEdit=false;imageEditRoomId=null;invalidateLayoutBoard();pruneDoors();render();fitAll();
     },
     setRules:(next,powers)=>{if(readOnly)return;const before=snapshot();rules=structuredClone(next);allowedPowerups=[...powers];saveState(before);},
+    // Read-only art for the game. Uses the exact same placement as PNG/print.
+    getGameArt:()=>{canonicalPaint=true;try{return rooms.map(r=>({id:String(r.id),alive:isEnemy(r)?roomArt(r,'image')[0]?.attrs:null,defeated:isEnemy(r)&&r.defeatedImage?roomArt({...r,image:r.defeatedImage,imageLayout:r.defeatedImageLayout},'image')[0]?.attrs:null,
+      numbers:r.type==='crazy'?Object.fromEntries(r.requirements.map(n=>[String(n),roomArt({...r,type:'normal',number:n})])):null}));}finally{canonicalPaint=false;}},
     exportPreview:async()=>{await preloadImages({rooms,background,printLayout});const b=layoutBounds();if(!b)return null;const width=(b.right-b.x)*CELL+16,height=(b.bottom-b.y)*CELL+16,k=Math.min(1,640/width,640/height),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.ceil(width*k));canvas.height=Math.max(1,Math.ceil(height*k));const ctx=canvas.getContext('2d');ctx.scale(k,k);ctx.translate(-b.x*CELL+8,-b.y*CELL+8);ctx.fillStyle='white';ctx.fillRect(b.x*CELL-8,b.y*CELL-8,width,height);canonicalPaint=true;try{paintBoard(ctx,{rooms,background,closedDoors});}finally{canonicalPaint=false;}return {src:canvas.toDataURL('image/png'),width:canvas.width,height:canvas.height,name:'Kartenvorschau'};},
     fit:fitAll,
   });

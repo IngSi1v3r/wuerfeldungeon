@@ -11,16 +11,18 @@ export function newGameView({api,status}) {
  const password=h('input',{id:'game-password',type:'password',maxlength:72,autocomplete:'new-password',placeholder:'Kein Passwort'});
  const cards=h('select',{id:'game-cards'},h('option',{value:'open'},'Offene Karten'),h('option',{value:'hidden'},'Verdeckte Karten'));
  const hints=h('select',{id:'game-hints'},h('option',{value:'true'},'Mit Tipps'),h('option',{value:'false'},'Ohne Tipps'));
+ const modern=status?.gameFeaturesVersion===CONFIG.gameFeaturesVersion;
+ const sums=h('input',{id:'game-dice-hints',type:'checkbox',checked:true}),fields=h('input',{id:'game-field-hints',type:'checkbox',checked:true}),fog=h('input',{id:'game-fog',type:'checkbox'});
  const selectedLabel=h('h2',{id:'selected-game-map'}),submit=h('button',{id:'create-game',class:'button primary',type:'submit',disabled:true},icon('dice'),'Warteraum eröffnen');
  const form=h('form',{class:'panel game-options',id:'create-game-form',onsubmit:async event=>{
   event.preventDefault();if(!selected)return;submit.disabled=true;setFeedback(message,'');
   try {if(new TextEncoder().encode(password.value).length>72)throw Error('Das Spielpasswort darf höchstens 72 UTF-8-Bytes lang sein.');
-   const result=await commands.run('create_game',{p_map_version_id:selected.versionId,p_name:name.value.trim(),p_settings:{maxPlayers:Number(max.value),cards:cards.value,hints:hints.value==='true'},p_password:password.value});
+   const result=await commands.run('create_game',{p_map_version_id:selected.versionId,p_name:name.value.trim(),p_settings:{maxPlayers:Number(max.value),cards:cards.value,hints:modern?sums.checked&&fields.checked:hints.value==='true',...(modern?{diceHints:sums.checked,fieldHints:fields.checked,fog:fog.checked}:{})},p_password:password.value});
    password.value='';if(!closed)location.hash=gameLink(result.gameId);
   } catch(error){if(!closed)setFeedback(message,error.message);}finally{if(!closed)submit.disabled=!selected;}
  }},h('p',{class:'eyebrow'},'2 · Deine Runde'),selectedLabel,h('div',{class:'game-form-grid'},
   h('label',{class:'map-form-label game-name-label'},'Name des Spiels',name),h('label',{class:'map-form-label'},'Maximale Spieleranzahl',max),h('label',{class:'map-form-label'},'Spielpasswort · optional',password),
-  h('label',{class:'map-form-label'},'Karten der Mitspieler',cards),h('label',{class:'map-form-label'},'Kombinationen und erreichbare Felder',hints)),
+  h('label',{class:'map-form-label'},'Karten der Mitspieler',cards),modern?h('fieldset',{class:'game-rule-options'},h('legend',{},'Spielhilfen und Sicht'),h('label',{},sums,'Würfelsummen anzeigen'),h('label',{},fields,'Spielbare Felder hervorheben'),h('label',{},fog,'Fog of War · zwei Felder Sicht')):h('label',{class:'map-form-label'},'Kombinationen und erreichbare Felder',hints)),
   h('p',{class:'muted'},'Nach dem Start bleiben Karte, Einstellungen und Teilnehmer für dieses Spiel festgelegt.'),submit);
  form.hidden=true;
  const element=h('section',{class:'new-game-view'},h('a',{class:'back-link',href:'#/play'},icon('back'),'Zur Spielauswahl'),pageHeading('Eine Runde beginnen','Wähle eure Welt.','Hier erscheinen ausschließlich fertig veröffentlichte Karten.'),
