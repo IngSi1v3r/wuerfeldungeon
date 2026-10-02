@@ -8,11 +8,11 @@ import {gameLink,dateLabel,settingsBadges,liveIndicator,joinDialog,gameStatusLab
 export function playView(ctx) {
  const {api,status}=ctx;let closed=false,loaded=false;
  const message=feedback(),lobbies=h('div',{class:'game-list',id:'lobby-list'}),ongoing=h('div',{class:'game-list',id:'ongoing-list'}),live=liveIndicator();
- const element=h('section',{class:'play-view'},pageHeading('Gemeinsam spielen','Das nächste Abenteuer wartet.','Starte eine Runde, triff deinen Trupp oder setze ein begonnenes Spiel fort.'),
+ const element=h('section',{class:'play-view'},pageHeading('Gemeinsam spielen','Das nächste Abenteuer wartet.'),
   h('div',{class:'play-toolbar'},h('a',{class:'button primary',id:'new-game',href:'#/new-game'},icon('dice'),'Neues Spiel'),h('a',{class:'button secondary',href:'#/history'},icon('book'),'Chronik'),live.element,
    h('button',{class:'button secondary',title:'Spiele aktualisieren',id:'refresh-games',onclick:()=>watch.refresh()},'↻')),message,
-  h('div',{class:'game-section-heading'},h('h2',{},'Deine laufenden Spiele'),h('p',{class:'muted'},'Dein Platz bleibt erhalten – auch wenn du das Gerät wechselst.')),ongoing,
-  h('div',{class:'game-section-heading'},h('h2',{},'Offene Warteräume'),h('p',{class:'muted'},'Hier kannst du bis zum Spielstart einsteigen.')),lobbies);
+  h('div',{class:'game-section-heading'},h('h2',{},'Deine laufenden Spiele')),ongoing,
+  h('div',{class:'game-section-heading'},h('h2',{},'Offene Warteräume')),lobbies);
  function card(g) {
   const lobby=g.status==='lobby',full=g.playerCount>=g.settings.maxPlayers;
   return h('article',{class:'game-card panel','data-game-id':g.id},h('div',{class:'game-card-map'},mapMiniature(api,g.map)),h('div',{class:'game-card-main'},

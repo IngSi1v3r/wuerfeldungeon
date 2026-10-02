@@ -37,6 +37,12 @@ const PATHS={
   sparkle:['m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z'],
   lock:['M6 10h12v11H6V10Z','M8 10V6a4 4 0 0 1 8 0v4'],
   eye:['M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z','M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z'],
+  fullscreen:['M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5'],
+  minimize:['M3 8h5V3M21 8h-5V3M16 21v-5h5M8 21v-5H3'],
+  pause:['M8 5v14M16 5v14'],
+  play:['m8 4 12 8-12 8V4Z'],
+  menu:['M4 6h16M4 12h16M4 18h16'],
+  heart:['M12 21S2 15 2 8a5 5 0 0 1 10-2 5 5 0 0 1 10 2c0 7-10 13-10 13Z'],
 };
 export function icon(name,className='') {
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
@@ -66,5 +72,5 @@ export function setBusy(form,busy) {
   for (const input of form.querySelectorAll('button,input,select')) input.disabled=busy;
 }
 export function pageHeading(eyebrow,title,subtitle) {
-  return h('div',{class:'page-heading'},h('p',{class:'eyebrow'},eyebrow),h('h1',{},title),h('p',{class:'muted'},subtitle));
+  return h('div',{class:'page-heading'},eyebrow?h('p',{class:'eyebrow'},eyebrow):null,h('h1',{},title),subtitle?h('p',{class:'muted'},subtitle):null);
 }

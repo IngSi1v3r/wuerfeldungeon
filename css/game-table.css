@@ -1,0 +1,345 @@
+/* Feste Spielansicht: derselbe SVG-Spielplan, in einem gemeinsamen Rahmen. */
+.nav-back {display:grid;place-items:center;width:34px;height:34px;color:var(--gold);border:1px solid var(--line);border-radius:50%;}
+#toast-region {display:grid;gap:10px;}
+.mark-preview.pencil .mark-ink {opacity:1;background:repeating-linear-gradient(55deg,transparent 0 5px,#26332dcc 6px 8px,transparent 9px 11px);}
+.mark-preview.waves .mark-ink {background:repeating-radial-gradient(ellipse at -10px 50%,transparent 0 5px,#26332dcc 6px 8px,transparent 9px 11px);}
+.mark-preview.cross .mark-ink::before,.mark-preview.cross .mark-ink::after {width:5px;background:#26332d;}
+.audio-preferences {border-top:1px solid var(--line);padding-top:16px;color:var(--muted);font-size:12px;}
+.audio-preferences summary {cursor:pointer;}
+.game-dialog {background:#193a2f;color:var(--ink);border:1px solid #b2bd8d66;border-radius:20px;padding:26px;width:min(650px,calc(100% - 28px));max-height:90dvh;overflow:auto;box-shadow:0 22px 75px #0008;}
+.game-dialog::backdrop {background:#091f19b8;backdrop-filter:blur(4px);}
+.game-dialog.opponent-dialog {width:min(1100px,calc(100% - 24px));padding:18px;}
+.game-dialog.life-loss-dialog {width:min(420px,calc(100% - 28px));}
+.game-open {height:100dvh;overflow:hidden;overscroll-behavior:none;}
+.game-open .site-header,.game-open .site-footer {display:none;}
+.game-open #app {padding:0;width:100%;max-width:none;}
+.game-open .network-banner {position:fixed;z-index:110;top:54px;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 30px);margin:0;box-shadow:0 10px 25px #0005;}
+.game-immersive {
+ --table-border:#b3c29b35;
+ position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;gap:8px;
+ height:100dvh;min-width:0;overflow:hidden;
+ padding:max(8px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
+ background:radial-gradient(ellipse at 50% 25%,#42553e55,transparent 70%),linear-gradient(#102e26d9,#102c25f2),url('../assets/forest.svg') center/cover;
+}
+.game-immersive .play-toolbar {display:flex;flex-wrap:nowrap;gap:8px;margin:0;padding:0 1px;min-height:42px;flex-shrink:0;}
+.game-immersive .table-back {width:36px;height:36px;min-height:36px;padding:0;border-radius:50%;background:#34524466;border-color:var(--table-border);}
+.game-immersive .table-back>span {display:none;}
+.table-icon-button {display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;min-height:36px;flex-shrink:0;border:1px solid #9cbba73b;border-radius:50%;background:#224335aa;color:#dfdfc1;padding:0;}
+.table-icon-button .icon {width:17px;height:17px;}
+.table-icon-button:hover {background:#385846;}
+.table-icon-button:focus-visible,.game-immersive .table-back:focus-visible {outline-offset:1px;}
+.table-home {display:none;}
+.game-immersive .table-home {display:inline-flex;}
+.table-heading {min-width:0;margin-right:auto;padding-left:7px;}
+.table-heading h1 {font:400 20px/1.1 Georgia,serif;letter-spacing:0;margin:0;max-width:36vw;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-wrap:nowrap;}
+.table-map-name {display:block;font-size:9px;line-height:1.5;color:#b0c1a9;max-width:36vw;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.table-round {border-left:1px solid var(--table-border);padding-left:14px;font-size:11px;color:#e2d0a6;white-space:nowrap;}
+.game-immersive .live-indicator {margin:0 5px;max-width:9px;font-size:0;gap:0;}
+.game-immersive .live-indicator .status-dot {width:7px;height:7px;}
+.game-immersive .table-refresh {width:30px;min-height:30px;height:30px;padding:0;font-size:21px;background:transparent;border:0;}
+.game-immersive #game-content {display:flex;flex-direction:column;flex:1;gap:8px;min-height:0;min-width:0;}
+.game-immersive>.feedback:not([hidden]) {position:absolute;top:62px;left:50%;transform:translateX(-50%);z-index:12;max-width:min(680px,calc(100% - 32px));box-shadow:0 10px 32px #0007;background:#50382df5;margin:0;font-size:12px;}
+.game-immersive .room-management {flex-shrink:0;min-width:0;}
+.game-immersive .room-management:has(.room-others[hidden]) {display:none;}
+.game-immersive .room-players {display:flex;align-items:flex-start;justify-content:center;justify-content:safe center;gap:12px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;max-width:100%;padding:2px 3px 4px;scrollbar-width:thin;scrollbar-color:#87a37a44 transparent;}
+.opponent-seat {display:flex;align-items:center;flex-direction:column;flex:0 0 auto;min-width:0;}
+.opponent-pill {display:flex;align-items:center;gap:8px;padding:4px 11px 4px 4px;min-width:138px;border:1px solid var(--table-border);border-radius:40px;background:linear-gradient(125deg,#3b5542e8,#1a392fea);box-shadow:0 4px 12px #0002;}
+.opponent-pill .avatar {width:29px;height:29px;font-size:10px;border-color:#d8d6a344;}
+.opponent-name {font-size:11px;font-weight:550;max-width:104px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.opponent-pill .opponent-score {font-size:13px;font-weight:650;color:#e5cf95;margin-left:auto;}
+.opponent-pill .roller-indicator {display:flex;align-items:center;}
+.opponent-pill .roller-indicator .icon {width:15px;height:15px;}
+.current-roller .opponent-pill {border-color:#c5b57999;box-shadow:0 0 16px #cfbf7030;}
+.opponent-seat.eliminated {opacity:.6;}
+.game-immersive .opponent-miniature {width:105px;height:55px;border:1px solid #b9c99b44;border-radius:0 0 9px 9px;background:#f4f3eb;padding:2px;margin-top:-1px;flex-shrink:0;}
+.game-immersive .opponent-miniature svg {filter:none;}
+.game-immersive .room-play {display:grid;grid-template-columns:minmax(0,1fr) minmax(145px,190px);gap:10px;align-items:stretch;flex:1;min-height:0;min-width:0;}
+.game-immersive .game-board-wrap {display:flex;flex-direction:column;min-height:0;min-width:0;border-radius:15px;border:1px solid #c7c5a657;box-shadow:0 6px 32px #0003;background:#f0f1e8;isolation:isolate;}
+.game-immersive .game-board-stage {height:auto;min-height:0;flex:1;width:100%;background:#f2f2e9;}
+.game-immersive .game-board-stage.fog-active {background:#283c37;}
+.game-immersive #game-content>.game-board-wrap {flex:1;}
+.game-immersive .game-board-toolbar {position:absolute;bottom:12px;left:12px;z-index:4;padding:5px;border:1px solid #64795a88;border-radius:30px;background:#17372feb;box-shadow:0 4px 12px #0004;gap:0;}
+.game-immersive .game-board-toolbar>span {display:none;}
+.game-immersive .game-board-toolbar .button-row {gap:3px;}
+.game-immersive .game-board-toolbar .button {padding:0;min-height:30px;width:30px;height:30px;border-radius:50%;font-size:16px;border:0;background:transparent;}
+.game-immersive .game-board-toolbar .button:last-child {width:auto;gap:5px;padding:0 8px;font-size:9px;}
+.game-immersive .game-board-toolbar .button:last-child .icon {width:14px;height:14px;}
+.game-side {display:flex;flex-direction:column;min-height:0;min-width:0;background:#18382dd9;border:1px solid var(--table-border);border-radius:15px;padding:10px;gap:10px;overflow:hidden;}
+.game-immersive .game-lives {display:grid;grid-template-columns:1fr auto;align-items:start;gap:6px;padding:0;background:transparent;border:0;box-shadow:none;text-align:left;flex:0 0 auto;}
+.game-immersive .game-lives h3 {display:flex;align-items:center;gap:6px;font:500 12px/1.5 Inter,'Segoe UI',sans-serif;margin:2px 0 0;color:#e5ccb3;grid-column:1;grid-row:1;}
+.game-lives h3 .icon {height:15px;width:15px;}
+.game-immersive .life-boxes {display:grid;grid-auto-flow:column;grid-template-rows:repeat(11,17px);gap:3px;justify-content:center;grid-column:1/-1;grid-row:2;}
+.game-immersive .life-boxes[data-extra] {grid-template-rows:repeat(14,17px);}
+.game-immersive .life-box {width:28px;height:17px;border-radius:3px;font-size:9px;color:#bac8ad;border-color:#bac99a69;}
+.game-immersive .life-box.lost {color:#f8d4b2;border-color:#d8a689;background:repeating-linear-gradient(55deg,#8e5b42df 0 3px,#583f32e8 4px 6px);}
+.game-immersive .game-lives>small {align-self:center;grid-column:2;grid-row:1;font-size:9px;margin:0;color:#b7c6a7;}
+.game-immersive .game-tasks {display:grid;align-content:start;gap:10px;flex:1;min-height:0;min-width:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#9eaf7a66 transparent;margin:0;padding:9px 0 0;border-top:1px solid var(--table-border);}
+.game-immersive .game-tasks>section {min-width:0;}
+.game-immersive .task-progress {display:block;flex:none;text-align:left;width:100%;max-width:none;min-width:0;border:1px solid #b3bf9638;border-radius:10px;background:#284a3666;padding:10px;color:#c3d0b1;cursor:pointer;font:inherit;}
+.game-immersive .task-progress:hover {border-color:#d4c18a88;background:#3b5235bb;}
+.task-title {display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.task-title strong {font-size:11px;color:#e2d5ac;font-weight:550;}
+.task-count {font-size:10px;color:#becfaf;}
+.task-progress .task-reward {margin:5px 0 7px;font-size:10px;line-height:1.4;color:#d5c798;}
+.reward-unavailable {text-decoration:line-through;opacity:.5;}
+.game-immersive .task-cells,.task-dialog .task-cells {display:flex;gap:4px;flex-wrap:wrap;margin:0;}
+.task-cell {position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;width:29px;min-width:29px;height:33px;border:1.5px solid #819e81;border-radius:4px;padding:1px 2px;background:#f1f0de;color:#263e32;font-size:8px;line-height:1.2;}
+.task-cell-value {font-weight:700;overflow:hidden;white-space:nowrap;max-width:100%;}
+.task-cell-symbol {font-size:10px;line-height:1;}
+.task-cell[data-type='rune'],.task-cell[data-type='special'] {border-color:#af94ca;color:#79569e;background:#f2eafa;}
+.task-cell[data-type='trap'] {border-color:#d8976d;background:#f8e4d0;}
+.task-cell[data-type='portal'] {border-color:#7e91d2;background:#e4e7fa;}
+.task-cell[data-type='diamond'] {border-color:#7aa7c4;background:#e3f3fc;}
+.task-cell.checked {background:#a7bd93;color:#344831;border-color:#b7d19d;}
+.task-check {position:absolute;inset:0;display:grid;place-items:center;background:#384b3155;font-size:28px;font-weight:750;color:#153526;text-shadow:0 0 2px #d7e4c1;}
+.task-cell.unknown {background:#2e403a;color:#bec7b6;border-color:#788979;}
+.task-more {font-size:10px;display:grid;place-items:center;padding:2px;min-height:28px;}
+.game-immersive .task-progress.complete {border-color:#b8cc8977;background:#44673950;}
+.game-immersive .task-progress.blocked {opacity:.65;}
+.game-immersive .task-progress>small {display:block;font-size:9px;margin-top:6px;}
+.task-dialog {width:min(540px,calc(100% - 24px));padding:24px;}
+.task-dialog .task-title strong {font:400 25px Georgia,serif;}
+.task-dialog .task-title .task-count {font-size:18px;}
+.task-dialog .task-description {font-size:13px;color:var(--muted);margin:17px 0;}
+.task-dialog .task-reward {color:var(--gold);font-size:13px;}
+.task-dialog .task-cell {width:43px;min-width:43px;height:46px;font-size:10px;}
+.task-dialog .task-cell-symbol {font-size:14px;}
+.task-dialog>.button {margin-top:22px;}
+.game-immersive .game-dock {display:grid;grid-template-columns:minmax(180px,1fr) minmax(300px,1.5fr);align-items:center;gap:20px;padding:9px 16px;flex:0 0 auto;min-height:86px;border:1px solid var(--table-border);border-radius:16px;background:linear-gradient(100deg,#274635f2,#1b3b30ed);}
+.game-immersive .game-score {display:grid;grid-template-columns:auto 1fr;align-items:center;gap:5px 14px;padding:0;margin:0;background:none;border:0;box-shadow:none;min-width:0;}
+.game-immersive .score-total {display:flex;flex-direction:column;align-items:flex-start;gap:0;grid-row:1/3;}
+.game-immersive .score-total strong {font:400 35px/1.1 Georgia,serif;color:#ebd29b;}
+.game-immersive .score-total span {font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#bbc8af;}
+.score-details {display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.game-immersive .score-diamonds {gap:5px;font-size:13px;}
+.game-immersive .score-diamonds .icon {width:18px;height:18px;}
+.game-immersive .score-penalty {font-size:10px;white-space:nowrap;}
+.game-immersive .score-gold {font-size:11px;}
+.score-resources {display:flex;gap:6px;align-items:center;min-width:0;flex-wrap:wrap;}
+.game-immersive .score-red {font-size:11px;gap:4px;padding:3px 5px 3px 0;}
+.game-immersive .score-red .icon {width:18px;height:18px;}
+.game-immersive .resource-button {display:inline-flex;align-items:center;gap:5px;justify-content:center;min-width:36px;min-height:32px;border:1px solid #a4bf8b55;border-radius:8px;background:#38513b77;color:#f3dfb0;font-size:14px;padding:3px 6px;}
+.game-immersive .resource-button>span {font-size:10px;}
+.game-immersive .resource-button.active {border-color:#f3d88e;background:#7e692e;box-shadow:0 0 12px #d9c16933;}
+.game-immersive .score-vision {font-size:11px;color:#cec8a4;}
+.game-immersive .turn-panel {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px;row-gap:4px;min-width:0;padding:0;margin:0;border:0;background:none;box-shadow:none;position:relative;}
+.game-immersive .turn-title {display:flex;gap:12px;align-items:center;justify-content:flex-start;grid-column:1/-1;}
+.game-immersive #turn-message {font-size:10px;color:#d9d4af;}
+.game-immersive .turn-completion {font-size:9px;padding:0;}
+.game-immersive .dice-and-options {margin:0;gap:12px;flex-wrap:nowrap;min-width:0;}
+.game-immersive .dice-tray {gap:7px;flex-shrink:0;}
+.game-immersive .dice-face {width:39px;height:39px;border-radius:9px;}
+.game-immersive .dice-options {min-width:0;}
+.game-immersive .combination-lists {min-width:0;gap:4px;}
+.game-immersive .combination-list,.game-immersive .red-combinations {gap:3px;flex-wrap:wrap;}
+.game-immersive .combination {min-width:23px;padding:2px 6px;font-size:10px;border-radius:5px;}
+.game-immersive .combination.red {min-width:19px;padding:1px 5px;font-size:9px;}
+.game-immersive .turn-buttons {margin:0;gap:5px;max-width:150px;}
+.game-immersive .turn-buttons .button {font-size:10px;padding:8px 11px;min-height:36px;}
+.game-immersive .turn-buttons .icon {width:14px;height:14px;}
+.game-immersive .turn-hourglass {position:absolute;right:0;top:0;margin:0;font-size:9px;color:#e9cc87;}
+.turn-overlay {position:absolute;inset:0;z-index:5;pointer-events:none;display:flex;align-items:center;justify-content:center;}
+.turn-prompt {pointer-events:none;}
+.turn-prompt .roll-button {pointer-events:auto;min-height:76px;min-width:236px;font:600 25px/1.2 Inter,'Segoe UI',sans-serif;border:2px solid #f4e3b0;border-radius:20px;background:linear-gradient(135deg,#f4daa0,#d0ae6b);box-shadow:0 12px 38px #172e2977,0 0 0 7px #f4eed644;letter-spacing:.4px;}
+.turn-prompt .roll-button .icon {width:29px;height:29px;}
+.center-state {display:inline-flex;gap:12px;align-items:center;padding:12px 20px;border:1px solid #d8d8b37a;border-radius:30px;backdrop-filter:blur(8px);background:#1e3b31ed;box-shadow:0 8px 32px #0004;color:#f0e7c3;font:400 18px Georgia,serif;}
+.game-immersive .wait-management {pointer-events:auto;width:min(440px,calc(100% - 30px));max-height:calc(100% - 35px);overflow:auto;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;border:1px solid #dabf76a6;border-radius:15px;padding:18px 22px;background:#203e30f5;box-shadow:0 12px 60px #0008;}
+.game-immersive .wait-management>p {font-size:13px;color:var(--gold);margin:0 0 6px;}
+.game-immersive .wait-player {padding:8px 0;gap:12px;}
+.game-immersive .wait-player>strong {font-size:11px;}
+.game-immersive .wait-player .button {font-size:10px;min-height:34px;padding:5px 9px;}
+.game-immersive .wait-player .button-row {gap:8px;}
+.game-immersive .wait-player .text-button {font-size:9px;}
+.game-immersive .table-menu {position:absolute;z-index:18;top:54px;right:12px;display:flex;flex-direction:column;align-items:stretch;gap:12px;max-width:330px;width:calc(100% - 28px);margin:0;padding:18px;background:#1c3a2ff8;border:1px solid #b9c39866;border-radius:15px;box-shadow:0 16px 55px #0007;}
+.table-menu>strong {font-size:14px;overflow-wrap:anywhere;}
+.table-menu .game-badges {margin:0;}
+.table-menu .button-row {align-items:flex-start;}
+.table-menu .host-transfer {display:grid;gap:7px;width:100%;font-size:11px;color:var(--muted);}
+.host-transfer select {font:inherit;color:var(--ink);background:#163226;border:1px solid var(--line);border-radius:8px;padding:9px;width:100%;min-height:38px;}
+.game-immersive .phase-note {font-size:11px;}
+.game-open #toast-region {z-index:120;bottom:135px;}
+.game-open #toast-region.has-prominent {bottom:auto;top:24%;max-width:min(640px,calc(100% - 40px));}
+.game-open .toast-prominent {padding:20px 28px;font:400 24px/1.3 Georgia,serif;color:#f5eccf;background:linear-gradient(110deg,#34513cef,#1b3d2ff5);border:1px solid #dbc994aa;border-radius:20px;box-shadow:0 16px 60px #0007;text-align:center;animation:notice-in .3s ease-out both;}
+.game-open .toast-prominent .icon {width:27px;height:27px;color:#e6cb84;}
+@keyframes notice-in {from{opacity:0;transform:translateY(-10px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+.dice-presentation {position:absolute;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;pointer-events:none;background:radial-gradient(ellipse at center,#263e3277,transparent 68%);}
+.roll-scene {position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:22px 30px;min-height:170px;min-width:300px;border:1px solid #d8c58a66;border-radius:25px;background:#1b342dee;box-shadow:0 20px 65px #0d271899;animation:roll-stage 2.1s ease both;}
+.dice-cup {position:absolute;top:5px;left:calc(50% - 60px);width:120px;height:145px;filter:drop-shadow(0 7px 10px #0007);animation:cup-shake .75s ease-in-out both;}
+.roll-reveal {display:flex;gap:14px;animation:faces-reveal 2.1s ease both;}
+.roll-reveal .dice-face {width:62px;height:62px;border-radius:13px;animation:face-land 2.1s ease both;}
+.roll-reveal .dice-face:nth-child(2) {animation-delay:.04s;}
+.roll-reveal .dice-face:nth-child(3) {animation-delay:.08s;}
+.roll-reveal .dice-face:nth-child(4) {animation-delay:.12s;}
+.roll-caption {margin:0;font:400 20px Georgia,serif;color:#edddba;animation:faces-reveal 2.1s ease both;}
+.roll-skip {position:absolute;bottom:-32px;color:#e7e0c7;font-size:10px;pointer-events:auto;padding:4px 10px;border-radius:15px;background:#203e31dd;}
+@keyframes cup-shake {0%{opacity:0;transform:translateY(-25px) rotate(-15deg)}15%{opacity:1;transform:rotate(16deg)}30%{transform:rotate(-18deg)}45%{transform:rotate(18deg)}60%{transform:rotate(-14deg)}78%{opacity:1;transform:translate(30px,-10px) rotate(100deg)}100%{opacity:0;transform:translate(50px,-20px) rotate(120deg)}}
+@keyframes faces-reveal {0%,32%{opacity:0}45%,88%{opacity:1}100%{opacity:0}}
+@keyframes face-land {0%,32%{opacity:0;transform:translateY(-30px) rotate(-25deg)}47%{opacity:1;transform:translateY(6px) rotate(8deg)}56%,88%{opacity:1;transform:translateY(0) rotate(0)}100%{opacity:0;transform:translateY(0)}}
+@keyframes roll-stage {0%{opacity:0;transform:scale(.94)}12%,90%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.98)}}
+.still-roll .roll-scene,.still-roll .roll-reveal,.still-roll .roll-reveal .dice-face,.still-roll .roll-caption {animation:none;}
+.still-roll .dice-cup {display:none;}
+.rotate-hint {display:none;}
+.game-cell-target.legal-cell {stroke:#488d2e;stroke-width:4;fill:#89c76b22;}
+.game-cell-target.red-cell {stroke:#b0523b;stroke-width:3.5;fill:#cb756125;}
+@media(max-width:1050px){
+ .game-immersive .room-play {grid-template-columns:minmax(0,1fr) 148px;gap:8px;}
+ .game-side {padding:8px;gap:8px;}
+ .game-immersive .game-dock {gap:12px;padding:8px 12px;grid-template-columns:minmax(165px,.85fr) minmax(280px,1.4fr);}
+ .game-immersive .dice-face {width:35px;height:35px;}
+ .game-immersive .dice-tray {gap:5px;}
+ .game-immersive .dice-and-options {gap:8px;}
+ .game-immersive .score-total strong {font-size:30px;}
+ .game-immersive .score-details {gap:7px;}
+ .game-immersive .task-progress {padding:8px;}
+}
+@media(max-height:720px){
+ .game-immersive .life-boxes {grid-template-rows:repeat(6,17px);}
+ .game-immersive .life-boxes[data-extra] {grid-template-rows:repeat(7,17px);}
+ .game-immersive .opponent-miniature {height:42px;width:90px;}
+ .game-immersive .game-dock {min-height:78px;}
+}
+@media(orientation:landscape) and (max-height:520px){
+ .game-immersive {padding:max(4px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));gap:4px;}
+ .game-immersive .play-toolbar {min-height:31px;height:31px;gap:6px;}
+ .table-icon-button,.game-immersive .table-back {width:29px;height:29px;min-height:29px;}
+ .table-heading {padding-left:3px;}
+ .table-heading h1 {font-size:15px;line-height:1.1;}
+ .table-map-name {font-size:8px;line-height:1.25;}
+ .table-round {font-size:9px;padding-left:8px;}
+ .game-immersive #game-content {gap:4px;}
+ .game-immersive .room-players {gap:8px;padding:0 2px 2px;}
+ .opponent-pill {gap:6px;padding:2px 8px 2px 2px;min-width:118px;}
+ .opponent-pill .avatar {width:24px;height:24px;font-size:9px;}
+ .opponent-name {font-size:10px;max-width:78px;}
+ .opponent-pill .opponent-score {font-size:11px;}
+ .game-immersive .opponent-miniature {height:29px;width:73px;}
+ .game-immersive .room-play {grid-template-columns:minmax(0,1fr) 125px;gap:6px;}
+ .game-immersive .game-board-wrap,.game-side {border-radius:10px;}
+ .game-side {padding:6px;gap:4px;}
+ .game-immersive .game-lives {gap:2px;}
+ .game-immersive .game-lives h3 {font-size:10px;gap:4px;}
+ .game-lives h3 .icon {width:12px;height:12px;}
+ .game-immersive .life-boxes,.game-immersive .life-boxes[data-extra] {grid-template-rows:repeat(3,12px);gap:2px;}
+ .game-immersive .life-box {height:12px;width:18px;font-size:7px;}
+ .game-immersive .game-lives>small {font-size:8px;}
+ .game-immersive .game-tasks {padding-top:4px;gap:5px;}
+ .game-immersive .task-progress {padding:4px;}
+ .task-title strong {font-size:9px;}
+ .task-count {font-size:8px;}
+ .task-progress .task-reward {font-size:8px;margin:1px 0 2px;}
+ .game-immersive .task-cell {width:24px;min-width:24px;height:20px;font-size:7px;}
+ .game-immersive .task-cell-symbol {font-size:9px;}
+ .game-immersive .game-dock {min-height:64px;gap:12px;padding:5px 10px;grid-template-columns:minmax(155px,.8fr) minmax(260px,1.4fr);border-radius:11px;}
+ .game-immersive .game-score {gap:3px 10px;}
+ .game-immersive .score-total strong {font-size:25px;}
+ .game-immersive .score-total span {font-size:8px;}
+ .game-immersive .score-diamonds {font-size:11px;}
+ .game-immersive .score-diamonds .icon,.game-immersive .score-red .icon {width:15px;height:15px;}
+ .game-immersive .score-penalty,.game-immersive .score-gold {font-size:9px;}
+ .game-immersive .resource-button {min-height:26px;min-width:31px;font-size:13px;}
+ .game-immersive .score-red,.game-immersive .score-vision {font-size:10px;}
+ .game-immersive .dice-face {width:31px;height:31px;border-radius:7px;}
+ .game-immersive .dice-and-options {gap:8px;}
+ .game-immersive .combination {min-width:19px;padding:1px 4px;font-size:9px;}
+ .game-immersive .combination.red {min-width:17px;padding:0 4px;font-size:8px;}
+ .game-immersive #turn-message {font-size:9px;}
+ .game-immersive .turn-buttons .button {font-size:9px;padding:5px 8px;min-height:29px;}
+ .game-immersive .turn-completion {font-size:8px;}
+ .turn-prompt .roll-button {min-height:61px;min-width:190px;font-size:21px;border-radius:16px;}
+ .center-state {font-size:15px;padding:9px 14px;}
+ .game-immersive .game-board-toolbar {left:7px;bottom:7px;padding:3px;}
+ .game-immersive .game-board-toolbar .button {min-height:27px;height:27px;width:27px;}
+ .game-immersive .wait-management {max-height:calc(100% - 16px);padding:10px 15px;}
+ .game-immersive .wait-player {flex-direction:row;align-items:center;}
+ .game-immersive .table-menu {top:40px;}
+ .roll-scene {min-height:125px;padding:16px 22px;gap:12px;}
+ .dice-cup {height:115px;width:95px;left:calc(50% - 47px);top:0;}
+ .roll-reveal .dice-face {width:47px;height:47px;}
+ .roll-caption {font-size:16px;}
+ .game-open .toast-prominent {font-size:19px;padding:14px 20px;}
+ .game-open #toast-region {bottom:80px;}
+}
+@media(orientation:landscape) and (max-height:350px){
+ .game-immersive .task-progress .task-cells {display:none;}
+ .game-immersive .opponent-miniature {height:23px;}
+}
+@media(orientation:portrait) and (max-width:600px){
+ .game-immersive {padding:max(6px,env(safe-area-inset-top)) max(6px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left));gap:6px;}
+ .game-immersive .play-toolbar {gap:5px;min-height:36px;}
+ .table-icon-button,.game-immersive .table-back {width:30px;height:30px;min-height:30px;}
+ .game-immersive .table-home,.game-immersive .table-refresh {display:none;}
+ .table-heading {padding-left:2px;}
+ .table-heading h1 {font-size:15px;max-width:30vw;}
+ .table-map-name {font-size:8px;max-width:30vw;}
+ .table-round {font-size:9px;padding-left:6px;}
+ .game-immersive .live-indicator {margin:0 2px;flex:none;}
+ .game-immersive #game-content {gap:6px;}
+ .game-immersive .room-players {justify-content:flex-start;gap:7px;padding:0 2px 3px;}
+ .opponent-pill {gap:5px;min-width:114px;padding:3px 9px 3px 3px;}
+ .opponent-name {font-size:10px;max-width:74px;}
+ .opponent-pill .avatar {width:26px;height:26px;}
+ .game-immersive .opponent-miniature {height:42px;width:88px;}
+ .game-immersive .room-play {grid-template-columns:minmax(0,1fr) 85px;gap:5px;}
+ .game-side {padding:6px;gap:5px;border-radius:10px;}
+ .game-immersive .game-lives {grid-template-columns:1fr;gap:5px;justify-items:center;text-align:center;}
+ .game-immersive .life-boxes {grid-template-rows:repeat(6,16px);justify-content:center;gap:3px;}
+ .game-immersive .life-boxes[data-extra] {grid-template-rows:repeat(7,16px);}
+ .game-immersive .life-box {width:25px;height:16px;font-size:8px;}
+ .game-immersive .game-lives h3 {font-size:10px;}
+ .game-immersive .game-lives>small {grid-row:3;grid-column:1;font-size:8px;}
+ .game-immersive .game-tasks {padding-top:5px;gap:6px;}
+ .game-immersive .task-progress {padding:5px;}
+ .task-title {flex-wrap:wrap;gap:3px;}
+ .task-title strong {font-size:9px;}
+ .task-count {font-size:8px;}
+ .task-progress .task-reward {font-size:8px;margin:3px 0 5px;}
+ .game-immersive .task-cells {gap:3px;}
+ .game-immersive .task-cell {width:25px;min-width:25px;height:28px;font-size:7px;}
+ .game-immersive .game-dock {grid-template-columns:1fr;gap:6px;padding:9px;border-radius:12px;min-height:0;}
+ .game-immersive .game-score {display:flex;gap:9px;flex-wrap:nowrap;justify-content:space-between;}
+ .game-immersive .score-total {gap:2px;flex-direction:row;align-items:baseline;}
+ .game-immersive .score-total strong {font-size:25px;}
+ .game-immersive .score-total span {font-size:7px;letter-spacing:0;}
+ .score-details {gap:5px;flex-wrap:wrap;font-size:9px;}
+ .game-immersive .score-diamonds {gap:3px;font-size:11px;}
+ .game-immersive .score-diamonds .icon {width:14px;height:14px;}
+ .game-immersive .score-penalty {display:none;}
+ .score-resources {gap:4px;justify-content:flex-end;}
+ .game-immersive .score-red {font-size:9px;}
+ .game-immersive .score-red .icon {width:15px;height:15px;}
+ .game-immersive .resource-button {min-width:27px;min-height:29px;padding:3px 4px;font-size:12px;gap:3px;}
+ .game-immersive .resource-button>span,.game-immersive .score-vision {font-size:9px;}
+ .game-immersive .turn-panel {column-gap:6px;row-gap:4px;}
+ .game-immersive .turn-title {justify-content:space-between;}
+ .game-immersive #turn-message {font-size:9px;}
+ .game-immersive .turn-completion {font-size:8px;margin-right:0;}
+ .game-immersive .dice-and-options {gap:8px;align-items:center;}
+ .game-immersive .dice-face {width:30px;height:30px;border-radius:7px;}
+ .game-immersive .dice-tray {gap:4px;}
+ .game-immersive .combination {min-width:18px;padding:1px 3px;font-size:9px;}
+ .game-immersive .combination.red {padding:0 3px;font-size:8px;min-width:15px;}
+ .game-immersive .turn-buttons {max-width:74px;}
+ .game-immersive .turn-buttons .button {padding:4px 6px;min-height:30px;font-size:8px;line-height:1.4;gap:3px;}
+ .game-immersive .turn-buttons .icon {width:12px;height:12px;}
+ .game-immersive .turn-hourglass {top:0;right:36px;font-size:8px;}
+ .turn-prompt .roll-button {min-width:164px;min-height:63px;padding:15px;font-size:21px;border-radius:17px;}
+ .center-state {font-size:14px;padding:10px 12px;max-width:210px;text-align:center;}
+ .game-immersive .game-board-toolbar {bottom:8px;left:7px;}
+ .game-immersive .game-board-toolbar .button {width:26px;height:26px;min-height:26px;font-size:14px;}
+ .game-immersive .game-board-toolbar .button:last-child {font-size:0;width:26px;padding:0;}
+ .game-immersive .game-board-toolbar .button:last-child .icon {width:15px;height:15px;}
+ .game-immersive .wait-management {padding:13px;}
+ .game-immersive .wait-player {flex-direction:column;align-items:flex-start;gap:5px;}
+ .rotate-hint {display:flex;align-items:center;gap:5px;position:absolute;top:8px;right:7px;font-size:8px;background:#19372ddc;border:1px solid #8c9f7e55;border-radius:14px;color:#ebdfbd;padding:4px 5px 4px 8px;z-index:4;}
+ .rotate-hint button {display:flex;border:0;background:none;color:inherit;padding:0;}
+ .rotate-hint .icon {width:11px;height:11px;}
+ .game-open #toast-region.has-prominent {top:23%;max-width:calc(100% - 26px);}
+ .game-open .toast-prominent {padding:15px 17px;font-size:18px;border-radius:15px;}
+ .roll-scene {min-width:200px;min-height:145px;padding:18px 14px;gap:14px;}
+ .roll-reveal {gap:7px;}
+ .roll-reveal .dice-face {width:38px;height:38px;}
+ .roll-caption {font-size:15px;}
+ .dice-cup {height:126px;width:104px;left:calc(50% - 52px);}
+}
+@media(prefers-reduced-motion:reduce){.dice-cup{display:none}.roll-scene,.roll-reveal,.roll-reveal .dice-face,.roll-caption{animation:none}}
+.reduce-motion .dice-cup {display:none;}

@@ -18,7 +18,7 @@ export function profileView(ctx) {
     h('div',{class:'avatar-editor'},portrait,h('div',{},h('h2',{},'Dein Gesicht im Abenteuer'),
       h('p',{class:'muted'},'PNG, JPEG oder WebP · maximal 8 MB. Das Bild wird mittig quadratisch zugeschnitten und als 256 × 256 Pixel gespeichert.'),
       h('div',{class:'button-row'},upload,remove),uploadInput)),
-    h('div',{class:'profile-fields'},h('div',{class:'form-field'},h('label',{for:input.id},'Anzeigename'),input,h('small',{class:'field-hint'},'Diesen Namen sehen deine Freunde.')),
+    h('div',{class:'profile-fields'},h('div',{class:'form-field'},h('label',{for:input.id},'Anzeigename'),input),
       h('div',{class:'form-field'},h('label',{},'Spielername zum Anmelden'),h('div',{class:'readonly-value'},profile.username),h('small',{class:'field-hint'},'Bleibt unverändert, auch wenn du deinen Anzeigenamen änderst.'))),
     message,h('div',{class:'button-row'},h('button',{type:'submit',class:'button primary',id:'save-profile'},icon('check'),'Profil speichern'),reload));
 
@@ -86,12 +86,11 @@ export function profileView(ctx) {
     } catch (error) { if (!disposed) {sessions.replaceChildren();setFeedback(sessionFeedback,error.message);} }
   }
   loadSessions();
-  const element=h('section',{},pageHeading('Dein Profil','So kennt dich dein Abenteuertrupp.','Dein Anzeigename und Profilbild werden mit deinem Spieler gespeichert – auch beim Gerätewechsel.'),
+  const element=h('section',{},pageHeading('Dein Profil','So kennt dich dein Abenteuertrupp.'),
     h('div',{class:'panel'},form),
     h('div',{class:'section-label'},h('h2',{},'Deine Abenteuer in Zahlen'),h('span',{class:'muted'},'Abgeschlossene Spiele')),statistics,
-    h('p',{class:'muted small'},'Bis zum ersten abgeschlossenen Spiel stehen die Werte auf 0. Hier werden keine erfundenen Test-Ergebnisse eingetragen.'),
     h('div',{class:'panel session-panel'},h('h2',{},'Angemeldete Geräte'),h('p',{class:'muted'},'Du bleibst angemeldet, bis du dich abmeldest oder die Sitzung 180 Tage lang nicht mehr verwendest.'),sessions,sessionFeedback,
-      h('div',{class:'logout-row'},h('p',{class:'muted'},'Dein Spieler und deine Daten bleiben beim Abmelden erhalten.'),
+      h('div',{class:'logout-row'},
         h('button',{type:'button',class:'button danger-button',id:'logout-button',onclick:()=>ctx.logout()},icon('logout'),'Auf diesem Gerät abmelden'))));
   return {element,cleanup:()=>{disposed=true;},hasUnsavedChanges:()=>input.value.trim()!==profile.displayName};
 }

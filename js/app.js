@@ -17,18 +17,22 @@ import {historyView} from './views/history.js';
 const root=document.querySelector('#app'),nav=document.querySelector('#header-nav');
 const banner=document.querySelector('#network-banner'),toastRegion=document.querySelector('#toast-region');
 const sessions=new SessionStore();
-let profile=null,status=null,currentView=null,route='',renderId=0,booting=true,toastTimer;
+let profile=null,status=null,currentView=null,route='',renderId=0,booting=true;
+const toastTimers=new Map();
 const inviteKey='wuerfeldungeon.invite.v1',invitePattern=/^#\/game\?id=[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 let pendingInvite='';
 try {const saved=sessionStorage.getItem(inviteKey);if(invitePattern.test(saved||''))pendingInvite=saved;}catch{/* Optionaler Rücksprung nach Anmeldung. */}
 function rememberInvite(){if(invitePattern.test(location.hash)){pendingInvite=location.hash;try{sessionStorage.setItem(inviteKey,pendingInvite);}catch{}}}
 function clearInvite(){pendingInvite='';try{sessionStorage.removeItem(inviteKey);}catch{}}
 const api=new Api(sessions,{onInvalidSession:invalidateSession});
-document.querySelector('#version-label').textContent=`Prototyp · ${CONFIG.version}`;
+document.querySelector('#version-label').textContent=CONFIG.version;
 
-function toast(message) {
-  clearTimeout(toastTimer);toastRegion.replaceChildren(h('div',{class:'toast'},icon('check'),message));
-  toastTimer=setTimeout(()=>toastRegion.replaceChildren(),4500);
+function toast(message,{prominent=false}={}) {
+  const node=h('div',{class:`toast ${prominent?'toast-prominent':''}`},icon(prominent?'sparkle':'check'),h('span',{},message));
+  function remove(item){clearTimeout(toastTimers.get(item));toastTimers.delete(item);item.remove();toastRegion.classList.toggle('has-prominent',Boolean(toastRegion.querySelector('.toast-prominent')));}
+  if(toastRegion.childElementCount>=3)remove(toastRegion.firstElementChild);
+  toastRegion.append(node);toastRegion.classList.toggle('has-prominent',Boolean(toastRegion.querySelector('.toast-prominent')));
+  toastTimers.set(node,setTimeout(()=>remove(node),prominent?3800:4500));
 }
 function applyPreferences(prefs) {
   document.body.classList.toggle('reduce-motion',Boolean(prefs.reduceMotion));
@@ -42,11 +46,13 @@ function renderHeader() {
   nav.replaceChildren(profile
     ? h('a',{class:'nav-home',href:'#/home'},icon('home'),h('span',{},'Lager')) : h('span',{class:'header-caption'},'Privater Abenteuertrupp'));
   if (profile) nav.append(h('a',{class:'nav-profile',href:'#/profile'},avatar(profile,'small'),h('span',{},profile.displayName)));
+  const parent=route==='new-game'?'#/play':['profile','settings','play','editor','history'].includes(route)?'#/home':null;
+  if(profile&&parent)nav.prepend(h('a',{class:'nav-back',href:parent,'aria-label':parent==='#/play'?'Zurück zur Spielauswahl':'Zurück ins Lager',title:'Zurück'},icon('back')));
 }
 function loading(text='Das Lager öffnet sich …') {
   return h('div',{class:'loading-panel',role:'status'},h('span',{class:'loader'}),text);
 }
-function clearView() {currentView?.cleanup?.();currentView=null;}
+function clearView() {currentView?.cleanup?.();currentView=null;for(const timer of toastTimers.values())clearTimeout(timer);toastTimers.clear();toastRegion.replaceChildren();toastRegion.classList.remove('has-prominent');}
 function show(view) {currentView=view;root.replaceChildren(view.element);root.setAttribute('aria-busy','false');}
 function showAuth(message='') {
   rememberInvite();

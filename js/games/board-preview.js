@@ -84,13 +84,14 @@ export function boardPreview(api,definition,{onCell=()=>{},onReady=()=>{},templa
    const oldMark=marked.get(id);
    if(oldMark&&(!done||!oldMark.classList.contains(style))){oldMark.remove();marked.delete(id);}
    if(done&&!marked.has(id)){const g=sv('g',{'data-marked-cell':id,class:`played-mark ${style}`});
-    if(style==='solid')g.append(sv('rect',{x,y,width:w,height:h,rx:5,fill:'#20352a',opacity:.3}));
-    else if(style==='cross')g.append(sv('path',{d:`M ${x} ${y} L ${x+w} ${y+h} M ${x+w} ${y} L ${x} ${y+h}`,stroke:'#263932','stroke-width':3,opacity:.5,fill:'none'}));
+    if(style==='solid')g.append(sv('rect',{x,y,width:w,height:h,rx:5,fill:'#25352e',opacity:.72}));
+    else if(style==='cross')g.append(sv('path',{d:`M ${x} ${y} L ${x+w} ${y+h} M ${x+w} ${y} L ${x} ${y+h}`,stroke:'#26332d','stroke-width':5,opacity:.88,fill:'none','stroke-linecap':'round'}));
     else if(style==='waves'){
-     for(let dy=6;dy<h;dy+=14)g.append(sv('path',{d:`M ${x} ${y+dy} Q ${x+w/4} ${y+dy-8} ${x+w/2} ${y+dy} T ${x+w} ${y+dy}`,stroke:'#263932','stroke-width':1.6,opacity:.35,fill:'none'}));
+     for(let dy=6;dy<h;dy+=12)g.append(sv('path',{d:`M ${x} ${y+dy} Q ${x+w/4} ${y+dy-8} ${x+w/2} ${y+dy} T ${x+w} ${y+dy}`,stroke:'#26332d','stroke-width':3,opacity:.78,fill:'none','stroke-linecap':'round'}));
     }else{
-     // Eine schmale Schraffur; keine Raster-/Raumgeometrie wird verändert.
-     for(let dy=8;dy<h;dy+=12)g.append(sv('path',{d:`M ${x+3} ${y+dy} L ${x+w-3} ${y+dy-5}`,stroke:'#263932','stroke-width':1.4,opacity:.33,fill:'none'}));
+     // Kräftige Bleistiftstriche, ohne Raster-/Raumgeometrie zu verändern.
+     g.append(sv('rect',{x,y,width:w,height:h,rx:4,fill:'#526058',opacity:.16}));
+     for(let dy=8;dy<h;dy+=10)g.append(sv('path',{d:`M ${x+3} ${y+dy} L ${x+w-3} ${y+dy-5}`,stroke:'#26332d','stroke-width':2.8,opacity:.72,fill:'none','stroke-linecap':'round'}));
     }attr(g,'visibility',seen?'visible':'hidden');marks.append(g);marked.set(id,g);
    }
    if(!info)continue;

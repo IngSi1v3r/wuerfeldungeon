@@ -25,7 +25,7 @@ export function lifeLossDialog(events){
 }
 export function liveIndicator() {
  const node=h('span',{class:'live-indicator',role:'status'},h('span',{class:'status-dot'}),'Verbindung wird aufgebaut');
- return {element:node,set(state){node.dataset.state=state;node.replaceChildren(h('span',{class:'status-dot'}),({connected:'Live verbunden',connecting:'Live-Verbindung wird aufgebaut',fallback:'Regelmäßige Aktualisierung',offline:'Offline · letzter gespeicherter Stand'})[state]||'Verbindung wird aufgebaut');}};
+ return {element:node,set(state){node.dataset.state=state;const label=({connected:'Live verbunden',connecting:'Live-Verbindung wird aufgebaut',fallback:'Regelmäßige Aktualisierung',offline:'Offline · letzter gespeicherter Stand'})[state]||'Verbindung wird aufgebaut';node.title=label;node.replaceChildren(h('span',{class:'status-dot'}),label);}};
 }
 export function joinForm({api,game,onJoined,commands=new GameCommands(api)}) {
  const message=feedback(),password=h('input',{id:'join-password',type:'password',autocomplete:'off',maxlength:72,required:game.passwordRequired,'aria-label':'Spielpasswort'});

@@ -67,9 +67,8 @@ export function authView({api,status,onAuthenticated,initialMessage=''}) {
   const element=h('section',{class:'auth-layout'},
     h('div',{class:'auth-story'},h('div',{class:'eyebrow'},icon('sparkle'),'Ein Abenteuer unter Freunden'),
       h('h1',{},'Ein Wurf. ',h('em',{},'Tausend Wege.')),
-      h('p',{},'Tief unter dem Feenwald warten verborgene Schätze und alte Wächter. Bald findet ihr gemeinsam euren Weg durch den Dungeon.'),
-      h('div',{class:'story-chips'},h('span',{},icon('dice'),'Würfeln'),h('span',{},icon('map'),'Entdecken'),h('span',{},icon('diamond'),'Schätze sammeln')),
-      h('div',{class:'story-note'},h('span',{class:'status-dot'}),'Phase 1 · Dein persönliches Lager')),
+      h('p',{},'Tief unter dem Feenwald warten verborgene Schätze und alte Wächter. Findet gemeinsam euren Weg durch den Dungeon.'),
+      h('div',{class:'story-chips'},h('span',{},icon('dice'),'Würfeln'),h('span',{},icon('map'),'Entdecken'),h('span',{},icon('diamond'),'Schätze sammeln'))),
     h('div',{class:'panel auth-panel'},h('p',{class:'eyebrow'},'Willkommen im Würfeldungeon'),
       h('h2',{},'Das Abenteuer wartet.'),h('p',{class:'muted'},'Melde dich an oder lege deinen Spieler an.'),
       h('div',{class:'tabs',role:'tablist','aria-label':'Anmeldung oder Registrierung'},tabLogin,tabRegister),formArea));

@@ -15,15 +15,15 @@ export function settingsView(ctx) {
     const input=h('input',{type:'checkbox',id,name:id,checked});
     return {input,node:h('label',{class:'setting-toggle',for:id},h('span',{},h('strong',{},label),h('small',{},description)),h('span',{class:'switch'},input,h('span',{class:'switch-track'})))};
   }
-  const sound=toggle('sound','Soundeffekte','Vorliebe für das spätere Spiel. Im Lager gibt es noch keine Spielgeräusche.',original.sound);
-  const music=toggle('music','Hintergrundmusik','Vorliebe für das spätere Spiel. In Phase 1 wird noch keine Musik abgespielt.',original.music);
+  const sound=toggle('sound','Soundeffekte','Vorgemerkt für die spätere Audio-Erweiterung.',original.sound);
+  const music=toggle('music','Hintergrundmusik','Vorgemerkt für die spätere Audio-Erweiterung.',original.music);
   const motion=toggle('reduceMotion','Weniger Bewegung','Sanfte Hintergrundanimationen und Übergänge ausschalten.',original.reduceMotion);
   motion.input.addEventListener('change',()=>ctx.applyPreferences({reduceMotion:motion.input.checked}));
   const reload=h('button',{type:'button',class:'text-button',id:'reload-settings'},'Einstellungen neu laden');
   function values() {return {markStyle:form.querySelector('input[name="markStyle"]:checked').value,sound:sound.input.checked,music:music.input.checked,reduceMotion:motion.input.checked};}
-  form.append(h('div',{class:'panel'},h('h2',{},'Dein Markierungsstil'),h('p',{class:'muted'},'So werden deine erreichten Felder später auf deinem Spielbrett markiert. Die Vorschau zeigt deinen Stil schon jetzt.'),
+  form.append(h('div',{class:'panel'},h('h2',{},'Dein Markierungsstil'),
     h('div',{class:'mark-options'},previews)),
-    h('div',{class:'panel settings-panel'},h('h2',{},'Atmosphäre & Bewegung'),sound.node,music.node,motion.node),
+    h('div',{class:'panel settings-panel'},h('h2',{},'Atmosphäre & Bewegung'),motion.node,h('details',{id:'audio-preferences',class:'audio-preferences'},h('summary',{},'Audio-Vorlieben'),sound.node,music.node)),
     message,h('div',{class:'button-row'},h('button',{class:'button primary',type:'submit',id:'save-settings'},icon('check'),'Einstellungen speichern'),reload));
   function adopt(next) {
     profile=next;ctx.updateProfile(next);const prefs=cleanPreferences(next.preferences);
@@ -48,7 +48,7 @@ export function settingsView(ctx) {
     const result=await ctx.api.authRpc('get_player_profile');
     if (!disposed) {adopt(result.profile);setFeedback(message,'Aktuelle Einstellungen geladen.','success');}
   }));
-  return {element:h('section',{},pageHeading('Einstellungen','Dein Spiel. Dein Stil.','Diese Vorlieben gehören zu deinem Profil und gehen beim Gerätewechsel mit.'),form),
+  return {element:h('section',{},pageHeading('Einstellungen','Dein Spiel. Dein Stil.'),form),
     cleanup:()=>{disposed=true;ctx.applyPreferences(cleanPreferences(ctx.getProfile().preferences));},
     hasUnsavedChanges:()=>JSON.stringify(values())!==JSON.stringify(cleanPreferences(profile.preferences))};
 }
