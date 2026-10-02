@@ -1,5 +1,5 @@
-export const MARK_STYLES = Object.freeze(['pencil','cross','solid','waves']);
-export const DEFAULT_PREFERENCES = Object.freeze({markStyle:'pencil',sound:true,music:false,reduceMotion:false});
+export const MARK_STYLES = Object.freeze(['cross','pencil','waves','solid','stars','runes','claws']);
+export const DEFAULT_PREFERENCES = Object.freeze({markStyle:'cross',sound:true,music:false,reduceMotion:false});
 
 export function normalizeUsername(value) { return String(value ?? '').trim().toLowerCase(); }
 export function validateUsername(value) {

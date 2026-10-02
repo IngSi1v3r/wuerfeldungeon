@@ -1,6 +1,10 @@
 import {CONFIG} from './config.js';
 
 const ERRORS={
+  SHOP_STYLE_INVALID:'Diese Markierung ist nicht verfügbar.',
+  SHOP_STYLE_LOCKED:'Diese Markierung musst du zuerst im Shop freischalten.',
+  SHOP_INSUFFICIENT_DIAMONDS:'Dein Guthaben reicht dafür noch nicht. Der Shop wird aktualisiert.',
+  SHOP_REQUEST_INVALID:'Diese Kaufanfrage gehört zu einer anderen Markierung. Bitte erneut versuchen.',
   GAME_POWERUP_PENDING:'Bitte zuerst das Powerup aus deiner geöffneten Truhe wählen.',
   GAME_POWERUP_UNAVAILABLE:'Dieses Powerup wurde bereits gewählt oder ist auf dieser Karte nicht freigegeben.',
   GAME_CHEST_INVALID:'Für diese Truhe ist keine Auswahl mehr offen. Der Spielstand wird neu geladen.',

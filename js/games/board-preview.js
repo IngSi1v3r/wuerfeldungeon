@@ -1,6 +1,7 @@
 import {h,icon,feedback} from '../dom.js';
 import {MapAssets} from '../maps/model.js';
 import {activeAttacks,roomLabel} from './rules.js';
+import {markingPrimitives} from '../markings.js';
 
 // Die bestehende Zeichenlogik liefert den SVG-Spielplan. Im Spielraum bleibt
 // davon nur das Bild, ohne Editor-Menüs, Durchgangsknöpfe oder Schreibfunktionen.
@@ -84,15 +85,8 @@ export function boardPreview(api,definition,{onCell=()=>{},onReady=()=>{},templa
    const oldMark=marked.get(id);
    if(oldMark&&(!done||!oldMark.classList.contains(style))){oldMark.remove();marked.delete(id);}
    if(done&&!marked.has(id)){const g=sv('g',{'data-marked-cell':id,class:`played-mark ${style}`});
-    if(style==='solid')g.append(sv('rect',{x,y,width:w,height:h,rx:5,fill:'#25352e',opacity:.72}));
-    else if(style==='cross')g.append(sv('path',{d:`M ${x} ${y} L ${x+w} ${y+h} M ${x+w} ${y} L ${x} ${y+h}`,stroke:'#26332d','stroke-width':5,opacity:.88,fill:'none','stroke-linecap':'round'}));
-    else if(style==='waves'){
-     for(let dy=6;dy<h;dy+=12)g.append(sv('path',{d:`M ${x} ${y+dy} Q ${x+w/4} ${y+dy-8} ${x+w/2} ${y+dy} T ${x+w} ${y+dy}`,stroke:'#26332d','stroke-width':3,opacity:.78,fill:'none','stroke-linecap':'round'}));
-    }else{
-     // Kräftige Bleistiftstriche, ohne Raster-/Raumgeometrie zu verändern.
-     g.append(sv('rect',{x,y,width:w,height:h,rx:4,fill:'#526058',opacity:.16}));
-     for(let dy=8;dy<h;dy+=10)g.append(sv('path',{d:`M ${x+3} ${y+dy} L ${x+w-3} ${y+dy-5}`,stroke:'#26332d','stroke-width':2.8,opacity:.72,fill:'none','stroke-linecap':'round'}));
-    }attr(g,'visibility',seen?'visible':'hidden');marks.append(g);marked.set(id,g);
+    for(const p of markingPrimitives(style,x,y,w,h))g.append(sv(p.tag,p.attrs));
+    attr(g,'visibility',seen?'visible':'hidden');marks.append(g);marked.set(id,g);
    }
    if(!info)continue;
    const hits=state.monsterHits?.[id]||0;for(const rect of info.querySelectorAll('[data-hit]'))attr(rect,'fill',Number(rect.getAttribute('data-hit'))<=hits?'#375b48':'#fff');

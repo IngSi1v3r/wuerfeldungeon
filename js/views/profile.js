@@ -63,7 +63,10 @@ export function profileView(ctx) {
   const stats=profile.stats || {};
   const statLabels=[['gamesPlayed','Gespielte Spiele'],['totalPoints','Gesamtpunkte'],['averagePoints','Ø Punkte / Spiel'],['wins','Siege'],['monstersDefeated','Besiegte Monster']];
   const statistics=h('div',{class:'stats-grid'},...statLabels.map(([key,label])=>h('div',{class:'stat-card'},h('strong',{},number.format(stats[key] ?? 0)),h('span',{},label))));
-  function refreshStatistics(){for(const [i,[key]] of statLabels.entries())statistics.children[i].querySelector('strong').textContent=number.format(profile.stats?.[key]??0);}
+  const walletTotal=h('strong',{id:'profile-shop-balance'}),walletHistory=h('p');
+  const wallet=h('div',{class:'panel diamond-wallet',hidden:!profile.cosmetics},h('div',{},h('h2',{},'Deine Diamantentasche'),h('div',{class:'wallet-total'},icon('diamond'),walletTotal,h('span',{},'Diamanten')),walletHistory),h('a',{class:'button secondary',href:'#/settings'},'Zum Markierungs-Shop'));
+  function refreshStatistics(){for(const [i,[key]] of statLabels.entries())statistics.children[i].querySelector('strong').textContent=number.format(profile.stats?.[key]??0);wallet.hidden=!profile.cosmetics;walletTotal.textContent=number.format(profile.cosmetics?.balance??0);walletHistory.textContent=`${number.format(profile.cosmetics?.earned??0)} erspielt · ${number.format(profile.cosmetics?.spent??0)} für Markierungen ausgegeben`;}
+  refreshStatistics();
   ctx.api.authRpc('get_player_profile').then(data=>{if(!disposed)adopt(data.profile);}).catch(()=>{});
   const sessions=h('div',{id:'session-list',class:'sessions-list'},h('p',{class:'muted'},'Aktive Geräte werden geladen …'));
   const sessionFeedback=feedback();
@@ -88,7 +91,7 @@ export function profileView(ctx) {
   loadSessions();
   const element=h('section',{},pageHeading('Dein Profil','So kennt dich dein Abenteuertrupp.'),
     h('div',{class:'panel'},form),
-    h('div',{class:'section-label'},h('h2',{},'Deine Abenteuer in Zahlen'),h('span',{class:'muted'},'Abgeschlossene Spiele')),statistics,
+    h('div',{class:'section-label'},h('h2',{},'Deine Abenteuer in Zahlen'),h('span',{class:'muted'},'Abgeschlossene Spiele')),statistics,wallet,
     h('div',{class:'panel session-panel'},h('h2',{},'Angemeldete Geräte'),h('p',{class:'muted'},'Du bleibst angemeldet, bis du dich abmeldest oder die Sitzung 180 Tage lang nicht mehr verwendest.'),sessions,sessionFeedback,
       h('div',{class:'logout-row'},
         h('button',{type:'button',class:'button danger-button',id:'logout-button',onclick:()=>ctx.logout()},icon('logout'),'Auf diesem Gerät abmelden'))));
