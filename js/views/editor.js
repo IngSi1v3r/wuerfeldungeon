@@ -1,3 +1,4 @@
+import {testMode} from '../games/test-mode.js';
 import {upgradeDocument,compileDocument} from '../maps/features.js';
 import {h,icon,feedback,setFeedback} from '../dom.js';
 import {CONFIG} from '../config.js';
@@ -16,13 +17,14 @@ export function editorView({api,profile,status,toast,mapId}) {
   const saveButton=h('button',{id:'save-map',class:'button secondary',onclick:()=>flush().catch(()=>{})},icon('check'),'Jetzt speichern');
   const reconnect=h('button',{id:'reconnect-map',class:'button secondary',hidden:true,onclick:()=>map&&editor?reconnectEditor():location.reload()},'Neu verbinden');
   const publish=h('button',{id:'check-publish-map',class:'button primary',onclick:()=>checkPublish()},icon('shield'),'Prüfen & veröffentlichen');
-  const rules=h('button',{id:'map-rules',class:'button secondary',disabled:true,onclick:()=>rulesDialog({document:currentDocument(),readOnly:!acquired,onSave:(next,powers)=>{editor.setRules(next,powers);}})},'Spielregeln');
+  const rules=h('button',{id:'map-rules',class:'button secondary',disabled:true,onclick:()=>rulesDialog({api,isActive:()=>!closed,document:currentDocument(),readOnly:!acquired,onSave:(next,powers)=>{editor.setRules(next,powers);}})},'Spielregeln');
+  const test=h('button',{id:'test-map',class:'button secondary',disabled:true,onclick:()=>testMode({api,document:currentDocument(),profile})},icon('dice'),'Testen');
   const exportButton=h('button',{id:'export-map-json',class:'button secondary',disabled:true,onclick:()=>exportLocal()},'JSON exportieren');
   const fullscreen=h('button',{id:'editor-fullscreen',class:'button secondary',onclick:async()=>{try{if(element.classList.contains('editor-maximized')){element.classList.remove('editor-maximized');fullscreen.textContent='Vollbild';return;}if(documentGlobal().fullscreenElement)await documentGlobal().exitFullscreen();else await element.requestFullscreen();}catch{element.classList.toggle('editor-maximized');}fullscreen.textContent=documentGlobal().fullscreenElement||element.classList.contains('editor-maximized')?'Vollbild verlassen':'Vollbild';}},'Vollbild');
   const copy=h('button',{id:'copy-current-map',class:'button secondary',disabled:true,onclick:()=>copyCurrent()},'Als Kopie');
   const frame=h('iframe',{id:'dungeon-editor',class:'dungeon-editor',src:'./editor/index.html',title:'Dungeon-Karteneditor'}),overlay=h('div',{class:'editor-loading',role:'status'},h('span',{class:'loader'}),'Die Zeichenfläche öffnet sich …');
   const element=h('section',{class:'editor-workbench'},h('div',{class:'editor-heading'},h('a',{class:'button secondary editor-back',href:'#/editor'},icon('back'),'Karten'),h('div',{class:'editor-title'},name,h('div',{class:'editor-title-meta'},state,savedDetails)),h('div',{class:'editor-save'},saveStatus,saveButton)),
-    h('div',{class:'editor-actions'},h('div',{class:'button-row'},rules,exportButton,copy,fullscreen,reconnect),publish),message,h('div',{class:'editor-frame-wrap'},frame,overlay));
+    h('div',{class:'editor-actions'},h('div',{class:'button-row'},rules,test,exportButton,copy,fullscreen,reconnect),publish),message,h('div',{class:'editor-frame-wrap'},frame,overlay));
   const fullscreenChanged=()=>{fullscreen.textContent=documentGlobal().fullscreenElement===element||element.classList.contains('editor-maximized')?'Vollbild verlassen':'Vollbild';};documentGlobal().addEventListener('fullscreenchange',fullscreenChanged);
   documentGlobal().body.classList.add('workshop-open');
   const ready=new Promise((resolve,reject)=>{let attempts=0;const timer=setInterval(()=>{if(closed){clearInterval(timer);reject(Error('Editor geschlossen.'));return;}if(frame.contentWindow?.DungeonEditor && frame.contentDocument?.documentElement.dataset.ready==='true'){clearInterval(timer);resolve(frame.contentWindow.DungeonEditor);}else if(++attempts>250){clearInterval(timer);reject(Error('Die Zeichenfläche konnte nicht geladen werden. Bitte neu laden.'));}},40);});
@@ -33,7 +35,7 @@ export function editorView({api,profile,status,toast,mapId}) {
   function applyMode(){
     if(!map||!editor)return;
     editor.setReadOnly(!acquired||reviewing);name.disabled=!acquired||reviewing;saveButton.hidden=!acquired;saveButton.disabled=reviewing;
-    publish.hidden=!acquired;publish.disabled=reviewing;rules.disabled=reviewing;exportButton.disabled=false;copy.disabled=false;
+    publish.hidden=!acquired;publish.disabled=reviewing;rules.disabled=reviewing;exportButton.disabled=false;copy.disabled=false;test.disabled=false;
     reconnect.hidden=map.status!=='draft'||acquired;state.className=`map-state ${map.status}`;state.textContent=map.status==='draft'?'Entwurf':map.status==='published'?'Veröffentlicht':'Archiviert';
     savedDetails.textContent=`${map.fields} Felder · ${map.enemies} Gegner · von ${map.creator}`;
   }
@@ -102,7 +104,8 @@ export function editorView({api,profile,status,toast,mapId}) {
       applyMode();if(dirty)await flush();else statusText('Bearbeitung bereit','saved');
     }catch(error){if(!closed)setFeedback(message,error.message);}finally{if(!closed)reconnect.disabled=false;}
   }
-  async function checkPublish(){
+  async function checkPublish(reviewed=false){
+    if(!reviewed){rulesDialog({api,isActive:()=>!closed,document:currentDocument(),readOnly:!acquired,onSave:(next,powers)=>{editor.setRules(next,powers);checkPublish(true);}});return;}
     publish.disabled=true;
     try{
       await flush();if(closed)return;reviewing=true;applyMode();
@@ -172,7 +175,7 @@ export function editorView({api,profile,status,toast,mapId}) {
     identity?.release();
     documentGlobal().removeEventListener('fullscreenchange',fullscreenChanged);window.removeEventListener('online',resume);documentGlobal().removeEventListener('visibilitychange',visibility);documentGlobal().body.classList.remove('workshop-open');
     window.removeEventListener('pagehide',pageHide);window.removeEventListener('pageshow',pageShow);
-    for(const d of documentGlobal().querySelectorAll('.workshop-dialog'))d.close();
+    for(const d of documentGlobal().querySelectorAll('.workshop-dialog,.test-mode-dialog'))d.close();
     if(editorId)Promise.resolve(savePromise).catch(()=>{}).then(()=>api.authRpc('release_map_lock',{p_map_id:mapId,p_editor_id:editorId})).catch(()=>{});
   }};
 }

@@ -16,7 +16,7 @@ export function historyView({api,status}) {
  function render() {
   list.replaceChildren(...entries.map(g=>{const winners=g.results.filter(r=>r.won);return h('article',{class:'history-card panel','data-game-id':g.id},h('div',{},h('p',{class:'eyebrow'},dateLabel(g.finishedAt)),h('h2',{},g.name),h('p',{class:'muted'},g.map.name),
    h('p',{class:'history-winners'},g.status==='cancelled'?'Ohne Wertung abgebrochen':winners.length?`${winners.length>1?'Gemeinsamer Sieg':'Sieg'}: ${winners.map(r=>r.displayName).join(' · ')}`:'Ergebnis wird noch bereitgestellt.')),
-   h('button',{class:'button secondary',onclick:async()=>{try{const data=await api.authRpc('get_game_result',{p_game_id:g.id});if(!closed)resultsDialog(data.game);}catch(error){if(!closed)setFeedback(message,error.message);}}},'Ergebnis ansehen'));}));
+   h('button',{class:'button secondary',onclick:async()=>{try{const data=await api.authRpc('get_game_result',{p_game_id:g.id});if(!closed)resultsDialog(data.game,{api});}catch(error){if(!closed)setFeedback(message,error.message);}}},'Ergebnis ansehen'));}));
   if(!entries.length)list.append(h('div',{class:'panel game-empty'},icon('book'),h('h2',{},'Hier beginnt eure Geschichte.'),h('p',{class:'muted'},'Noch keine passenden abgeschlossenen Spiele.')));more.hidden=!hasMore;
  }
  async function load(append=false) {

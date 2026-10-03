@@ -1,3 +1,4 @@
+import {assetUrl} from '../maps/model.js';
 import {h,icon} from '../dom.js';
 import {sortRequirements,requirementLabel,lifePenalty,pointsSoFar,gameWaitKind,elapsedWaitSeconds,diceHints,roomLabel} from './rules.js';
 import {goalText} from '../maps/features.js';
@@ -14,7 +15,7 @@ export function redDiceDialog(uses) {
  });
 }
 
-export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onTorch,onAxe,onChoosePowerup}) {
+export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onTorch,onAxe,onHorn,onChoosePowerup}) {
  let current=null,offset=0,closed=false,waitUntil=0,lastWait=null,detail=null;
  const timer=h('span',{id:'turn-hourglass',class:'turn-hourglass',hidden:true}),wait=h('div',{class:'wait-management',id:'wait-management',hidden:true,'aria-label':'Ausstehende Spieler'});
  const title=h('div',{class:'turn-title'}),diceTray=h('div',{class:'dice-tray',id:'game-dice'}),options=h('div',{class:'dice-options'}),diceArea=h('div',{class:'dice-and-options',hidden:true},diceTray,options),buttons=h('div',{class:'turn-buttons'});
@@ -37,16 +38,17 @@ export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onTorch,onAxe
   return ({reachFields:'Zielfelder',defeatEnemies:'Gegner besiegen',firstEnemies:'Erstbesieger',connect:'Weg verbinden',collectDiamonds:'Diamantenziel'})[goal?.type||t.type]||(key==='special'?'Alle Runen':'Bonusaufgabe');
  }
  function taskCell(game,t,id){
-  const room=game.definition?.document.rooms.find(r=>String(r.id)===String(id)),done=(t.completedIds||game.ownState?.reached||[]).map(String).includes(String(id)),hidden=game.settings.fog&&game.status!=='finished'&&!(game.visibleCells||[]).map(String).includes(String(id));
+  const room=game.definition?.document.rooms.find(r=>String(r.id)===String(id)),done=(t.completedIds||game.ownState?.reached||[]).map(String).includes(String(id)),hidden=false;
   const value=room?.type==='crazy'?game.roundRequirements?.[String(id)]:room?.number;
   const symbols={rune:'✕',special:'✕',trap:'⚠',portal:'◎',crazy:'✦',diamond:'♦',chest:'▣',goldSack:'●',goldCoin:'●',bonus:'⚑',monster:'⚔',boss:'⚔',miniboss:'⚔'};
-  return h('span',{class:`task-cell ${done?'checked':''} ${hidden?'unknown':''}`,'data-task-cell':String(id),'data-type':hidden?'unknown':room?.type||'normal',title:hidden?'Im Nebel':`${room?roomLabel(room):`Feld #${id}`}${done?' · erreicht':''}`,'aria-label':hidden?'Zielfeld im Nebel':`${room?roomLabel(room):`Feld #${id}`}${done?' · erreicht':''}`},
-   h('span',{class:'task-cell-symbol','aria-hidden':true},hidden?'?':symbols[room?.type]||'·'),h('span',{class:'task-cell-value'},hidden?'':value!=null?requirementLabel(value):`#${id}`),done?h('span',{class:'task-check','aria-hidden':true},'✓'):null);
+  const image=done&&room?.defeatedImage?room.defeatedImage:room?.image,enemy=['monster','boss','bonus','miniboss'].includes(room?.type);
+  return h('span',{class:`task-cell ${enemy?'enemy-task':''} ${done?'checked':''} ${hidden?'unknown':''}`,'data-task-cell':String(id),'data-type':hidden?'unknown':room?.type||'normal',title:hidden?'Im Nebel':`${room?roomLabel(room):`Feld #${id}`}${done?' · erreicht':''}`,'aria-label':hidden?'Zielfeld im Nebel':`${room?roomLabel(room):`Feld #${id}`}${done?' · erreicht':''}`},
+   enemy&&image?h('img',{src:image.src.startsWith('asset:')?assetUrl(image.src):image.src,alt:room.name||'Gegner'}):h('span',{class:'task-cell-symbol','aria-hidden':true},symbols[room?.type]||'·'),h('span',{class:'task-cell-value'},enemy?room.name||`#${id}`:value!=null?requirementLabel(value):`#${id}`),done?h('span',{class:'task-check','aria-hidden':true},'✓'):null);
  }
  function taskBody(game,key,expanded=false){
   const t=game.tasks?.[key];if(!t?.enabled)return null;
   const rooms=game.definition?.document.rooms||[],goal=goalFor(game,key),ids=t.cellIds||[],limit=expanded?ids.length:8;
-  const description=goal?goalText(game.settings.fog?{...goal,cellIds:[]}:goal,rooms):key==='special'?'Alle X-Felder erreichen':'Spezialaufgabe';
+  const description=goal?goalText(goal,rooms):key==='special'?'Alle X-Felder erreichen':'Spezialaufgabe';
   return [h('div',{class:'task-title'},h('strong',{},expanded?`Bonusaufgabe ${key==='special'?1:2}`:taskTitle(goal,t,key)),h('span',{class:'task-count'},t.completed?'✓':`${t.progress}/${t.total}`)),
    expanded?h('p',{class:'task-description'},description):null,
    h('p',{class:'task-reward'},t.completed?`${t.reward} ♦ erhalten`:t.blocked?'Nicht mehr erreichbar':h('span',{},h('span',{class:t.firstAvailable?'':'reward-unavailable'},`${t.rewardFirst??3} ♦`),' / ',`${t.rewardLater??1} ♦`)),
@@ -63,7 +65,8 @@ export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onTorch,onAxe
   const waitingKind=gameWaitKind(game),waitKey=JSON.stringify([game.id,game.round,waitingKind,waitingKind==='roll'?game.rollerId:game.choiceStartedAt]);
   if(waitKey!==lastWait){lastWait=waitKey;waitUntil=0;}
   const own=game.ownState||{},turn=game.turn||{},roller=game.participants.find(p=>p.id===game.rollerId),me=game.participants.find(p=>p.id===profile.id),ended=['finished','cancelled'].includes(game.status),sealed=game.phase==='round_complete';
-  const text=ended?(game.status==='finished'?'Abgeschlossen':'Abgebrochen'):game.status==='paused'?'Pause':turn.pendingPowerup?'Truhe geöffnet':mode.torch?(mode.middleCellId?'Fackel · Zielfeld wählen':'Fackel · Zwischenraum wählen'):mode.axe?'Doppelhit aktiv':sealed?'Schlusswertung':me?.eliminated?'Ausgeschieden':game.phase==='waiting_roll'?(game.rollerId===profile.id?'Dein Wurf':`${roller?.displayName||'Nächster Spieler'} würfelt`):turn.done?'Zug gespeichert':'Dein Zug';
+  element.dataset.ownStatus=turn.canAct?'act':'wait';
+  const text=mode.awaitingLoss?'Wurf wird ausgewertet …':ended?(game.status==='finished'?'Abgeschlossen':'Abgebrochen'):game.status==='paused'?'Pause':turn.pendingPowerup?'Truhe geöffnet':mode.torch?(mode.middleCellId?'Fackel · Zielfeld wählen':'Fackel · Zwischenraum wählen'):mode.axe?'Doppelhit aktiv':sealed?'Schlusswertung':me?.eliminated?'Ausgeschieden':game.phase==='waiting_roll'?(game.rollerId===profile.id?'Dein Wurf':`${roller?.displayName||'Nächster Spieler'} würfelt`):turn.done?'Warten auf Mitspieler':'Du bist am Zug';
   const completed=game.participants.filter(p=>p.active&&!p.eliminated&&p.turnDone).length,totalPlayers=game.participants.filter(p=>p.active&&!p.eliminated).length;
   renderSection(title,[text,completed,totalPlayers],()=>[h('span',{id:'turn-message',role:'status'},text),h('span',{class:'turn-completion',title:'Gespeicherte Züge'},`${completed}/${totalPlayers} ✓`)]);
   const showPrompt=turn.canRoll||game.status==='paused'||game.phase==='waiting_roll'&&!ended||sealed||mode.torch||mode.axe;
@@ -86,10 +89,11 @@ export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onTorch,onAxe
   renderSection(diamonds,own.diamonds,()=>[icon('diamond'),h('strong',{},own.diamonds||0)]);diamonds.title=`${own.diamonds||0} Diamanten`;
   renderSection(penalty,[own.lostLives,own.extraLives],()=>`${lifePenalty(own)} Leben`);
   gold.hidden=!game.definition?.document.rooms.some(r=>['goldSack','goldCoin'].includes(r.type));renderSection(gold,own.goldPoints,()=>`● ${own.goldPoints||0}`);gold.title='Goldpunkte';
-  renderSection(resources,[own.redUses,own.torchUses,own.axeUses,own.powerups,mode.torch,mode.axe,busy,turn.canAct,game.settings.fog],()=>[
+  renderSection(resources,[own.redUses,own.torchUses,own.axeUses,own.hornUses,own.powerups,mode.torch,mode.axe,busy,turn.canAct,game.settings.fog,game.status],()=>[
    h('span',{class:'score-red',title:'Verwendungen des roten Würfels'},icon('dice'),`${own.redUses||0}×`),
    onTorch&&(own.torchUses>0||own.powerups?.includes('torch'))?h('button',{id:'torch-mode',class:`resource-button ${mode.torch?'active':''}`,disabled:busy||!turn.canAct||!own.torchUses,'aria-label':`Fackel · ${own.torchUses||0} Verwendungen`,'aria-pressed':Boolean(mode.torch),title:'Fackel',onclick:onTorch},'🔥',h('span',{},own.torchUses||0)):null,
    onAxe&&(own.axeUses>0||own.powerups?.includes('axe'))?h('button',{id:'axe-mode',class:`resource-button ${mode.axe?'active':''}`,disabled:busy||!turn.canAct||!own.axeUses,'aria-label':`Doppelhit · ${own.axeUses||0} Verwendungen`,'aria-pressed':Boolean(mode.axe),title:'Doppelhit',onclick:onAxe},'🪓',h('span',{},own.axeUses||0)):null,
+   onHorn&&own.powerups?.includes('horn')?h('button',{id:'use-horn',class:'resource-button',disabled:busy||!own.hornUses||game.status!=='playing','aria-label':`Horn des Tiefenrufs · ${own.hornUses||0} Verwendungen`,title:'Horn des Tiefenrufs · 10 Sekunden Monsterblick',onclick:onHorn},'📯',h('span',{},own.hornUses||0)):null,
    own.powerups?.includes('binocular')?h('span',{class:'score-vision',title:'Fernglas · dauerhaft drei Felder Sicht'},'🔭 3'):game.settings.fog?h('span',{class:'score-vision',title:'Zwei Felder Sicht'},'☁ 2'):null]);
   const taskKey=[game.tasks,own.reached,game.visibleCells,game.roundRequirements,game.status];
   tasks.hidden=!['special','custom'].some(key=>game.tasks?.[key]?.enabled);

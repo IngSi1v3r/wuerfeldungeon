@@ -1,3 +1,6 @@
+import {hornIsActive} from '../games/visibility.js';
+import {fogMiniature} from '../maps/fog-preview.js';
+import {audio} from '../audio.js';
 import {h,icon,avatar,feedback,setFeedback,pageHeading} from '../dom.js';
 import {AppError} from '../api.js';
 import {CONFIG} from '../config.js';
@@ -14,17 +17,17 @@ import {dicePresentation} from '../games/dice-presentation.js';
 import {gameFullscreen} from '../games/fullscreen.js';
 
 export function gameView(ctx) {
- const {api,profile,status,toast,gameId}=ctx;let closed=false,game=null,definition=null,board=null,currentMode=null,joining=false,confirming=false,lastEvent=null,torchMode=false,middleCellId=null,axeMode=false,torchActions=[],torchLoading=false,ownKey=null,powerDialog=null,powerKey=null,dismissedPowerKey=null,opponent=null,finishedShown=false;
+ const {api,profile,status,toast,gameId}=ctx;let closed=false,game=null,definition=null,board=null,currentMode=null,joining=false,confirming=false,lastEvent=null,torchMode=false,middleCellId=null,axeMode=false,torchActions=[],torchLoading=false,ownKey=null,powerDialog=null,powerKey=null,dismissedPowerKey=null,opponent=null,finishedShown=false,notifications=Promise.resolve(),awaitingLoss=false,serverOffset=0,hornKey=null;
  const commands=new GameCommands(api),message=feedback(),body=h('div',{id:'game-content'}),live=liveIndicator(),heading=h('div',{class:'game-heading'});
  const roomRows=new Map(),roomPlayers=h('div',{class:'room-players',id:'game-players','aria-label':'Deine Mitspieler'}),roomOthers=h('div',{class:'room-others'}),roomControls=h('div',{class:'room-controls table-menu',id:'game-menu',hidden:true});
- const presentation=dicePresentation(),fullscreen=gameFullscreen({toast});
+ const presentation=dicePresentation({getPreferences:()=>ctx.getProfile?.()?.preferences||profile.preferences}),fullscreen=gameFullscreen({toast});
  const tableTitle=h('h1',{id:'game-title'}),tableMap=h('span',{class:'table-map-name'}),tableHeading=h('div',{class:'table-heading',hidden:true},tableTitle,tableMap),round=h('span',{class:'table-round',id:'game-round',hidden:true}),pause=h('span',{class:'table-pause'});
  const menuButton=h('button',{id:'game-menu-button',class:'table-icon-button',type:'button',title:'Spielmenü','aria-label':'Spielmenü','aria-controls':'game-menu','aria-expanded':'false',hidden:true,onclick:()=>setMenu(roomControls.hidden)},icon('menu'));
  function setMenu(open){roomControls.hidden=!open;menuButton.setAttribute('aria-expanded',String(open));}
  const rotateHint=h('div',{class:'rotate-hint'},h('span',{},'↻ Mehr Platz im Querformat'),h('button',{type:'button','aria-label':'Querformat-Hinweis schließen',onclick:()=>{rotateHint.hidden=true;}},icon('close')));
  const playInstalled=status?.playSchemaVersion===CONFIG.playSchemaVersion;
  const rulesInstalled=status?.rulesSchemaVersion===CONFIG.rulesSchemaVersion;
- const panel=turnPanel({profile,onTorch:rulesInstalled?toggleTorch:null,onAxe:rulesInstalled?()=>{axeMode=!axeMode;torchMode=false;middleCellId=null;render();}:null,onChoosePowerup:rulesInstalled?()=>openPowerup(true):null,onRoll:()=>command('roll_game_dice',{p_game_id:gameId,p_round:game.round}),onLoseLife:()=>{
+ const panel=turnPanel({profile,onHorn:()=>command('use_game_horn',{p_game_id:gameId,p_state_revision:game.turn.ownRevision},async()=>{audio.effect('horn');await watch.refresh();}),onTorch:rulesInstalled?toggleTorch:null,onAxe:rulesInstalled?()=>{axeMode=!axeMode;torchMode=false;middleCellId=null;render();}:null,onChoosePowerup:rulesInstalled?()=>openPowerup(true):null,onRoll:()=>command('roll_game_dice',{p_game_id:gameId,p_round:game.round}),onLoseLife:()=>{
   if(confirm('Ein Leben verlieren und diesen Zug beenden? Deine Powerup-Verwendungen bleiben erhalten.'))playTurn(null,'lose_life');
  },onResolveWait:(id,action)=>{
   if(confirm(action==='remove'?'Diesen Spieler aus dem laufenden Spiel entfernen?':gameWaitKind(game)==='roll'?'Diesen Wurf an den nächsten aktiven Spieler weitergeben? Der Spieler bleibt im Spiel und kann danach seinen Zug machen.':'Diesen offenen Zug ohne Lebensabzug überspringen? Eine noch offene Powerup-Auswahl verfällt dabei.'))command('resolve_game_wait',{p_game_id:gameId,p_round:game.round,p_target_player_id:id,p_action:action});
@@ -82,7 +85,7 @@ export function gameView(ctx) {
   },onClose:()=>{if(powerDialog===dialog){powerDialog=null;dismissedPowerKey=key;}}});powerDialog=dialog;
  }
  function claimsFor(playerId){const state=game.states?.find(s=>s.playerId===playerId)?.state;return (game.claims||[]).map(claim=>({...claim,ownFirst:game.rulesVersion>=7?state?.firstKills?.includes(String(claim.cellId)):claim.playerId===playerId}));}
- function opponentView(id){const entry=game.states?.find(s=>s.playerId===id);return {state:entry?.state,claims:claimsFor(id),markStyle:'pencil',interactive:false,hints:false,fog:game.settings.fog&&game.status!=='finished',visibleCells:entry?.visibleCells,roundRequirements:game.roundRequirements,traps:game.traps};}
+ function opponentView(id){const entry=game.states?.find(s=>s.playerId===id);return {state:entry?.state,claims:claimsFor(id),markStyle:'pencil',interactive:false,hints:false,fog:game.settings.fog&&game.status!=='finished',visibleCells:entry?.visibleCells,roundRequirements:game.roundRequirements,traps:game.traps,now:Date.now()+serverOffset};}
  function openOpponent(player){
   if(game.settings.cards!=='open'||!board?.getTemplate())return;
   opponent?.dialog.close();
@@ -150,7 +153,7 @@ export function gameView(ctx) {
   if(currentMode!==mode){currentMode=mode;body.replaceChildren();setMenu(false);}
   if(lobby) {
    body.replaceChildren(h('div',{class:'lobby-layout'},h('div',{class:'panel lobby-roster'},h('div',{class:'game-title-row'},h('h2',{},'Euer Trupp'),h('span',{class:'badge',id:'game-player-count'},`${game.playerCount} / ${game.settings.maxPlayers}`)),players(true)),
-    h('aside',{class:'panel lobby-map'},mapMiniature(api,game.map),h('h2',{},game.map.name),h('p',{class:'muted'},`${game.map.fields} Felder · ${game.map.enemies} Gegner`),
+    h('aside',{class:'panel lobby-map'},game.settings.fog?fogMiniature(api,game.map,definition):mapMiniature(api,game.map),h('h2',{},game.map.name),h('p',{class:'muted'},`${game.map.fields} Felder · ${game.map.enemies} Gegner`),
      lobbyRules(definition),h('p',{class:'muted'},game.passwordRequired?'Dieser Warteraum ist mit einem Passwort geschützt.':'Freunde können ohne Spielpasswort beitreten.'),h('button',{class:'button secondary',onclick:invite},icon('upload'),'Einladungslink kopieren'))),
      h('div',{class:'lobby-controls panel'},h('div',{},h('h2',{},host?'Alle da?':'Wir warten auf den Start.'),host?null:h('p',{class:'muted'},`${game.host.displayName} startet das Spiel.`)),
      h('div',{class:'button-row'},host?h('button',{id:'start-game',class:'button primary',disabled:commands.busy,onclick:()=>command('start_game',{p_game_id:gameId,p_expected_revision:game.revision})},icon('dice'),'Spiel starten'):null,
@@ -168,14 +171,14 @@ export function gameView(ctx) {
     h('p',{class:'phase-note',id:'game-phase-note'},!playInstalled?'Bitte die Spiel-Migration 008_phase4.sql installieren.':!rulesInstalled?'Bitte 010_phase5.sql für Powerups und Wertung installieren.':''),
     h('div',{class:'button-row'},host&&!ended&&game.participants.length>1?h('label',{class:'host-transfer'},'Host übergeben',h('select',{'aria-label':'Host übergeben',disabled:commands.busy,onchange:event=>{if(event.target.value)manage('host',event.target.value);event.target.value='';}},h('option',{value:''},'Spieler wählen'),...game.participants.filter(p=>p.id!==profile.id).map(p=>h('option',{value:p.id},p.displayName)))):null,
      host&&!ended?h('button',{id:'cancel-game',class:'text-button danger',disabled:commands.busy,onclick:()=>manage('cancel')},'Spiel abbrechen'):null,
-     ended?h('button',{class:'button secondary',onclick:async()=>{try{const data=await api.authRpc('get_game_result',{p_game_id:gameId});if(!closed)resultsDialog(data.game);}catch(error){setFeedback(message,error.message);}}},'Chronik ansehen'):null)]);
+     ended?h('button',{class:'button secondary',onclick:async()=>{try{const data=await api.authRpc('get_game_result',{p_game_id:gameId});if(!closed)resultsDialog(data.game,{api});}catch(error){setFeedback(message,error.message);}}},'Chronik ansehen'):null)]);
    if(!board&&definition){
     board=boardPreview(api,definition,{onCell:chooseCell,onReady:()=>{if(!closed)render();}});
     board.element.append(panel.overlay,presentation.element,rotateHint);
     if(playInstalled){body.append(h('div',{class:'room-play'},board.element,h('div',{class:'game-side'},panel.lives,panel.tasks)),h('div',{class:'game-dock'},panel.score,panel.element));}
     else body.append(board.element);
    }
-   if(playInstalled){panel.update({...game,definition},commands.busy||confirming,{torch:torchMode,middleCellId,axe:axeMode});board?.update({state:game.ownState,hints:fieldHints(game.settings),actions:highlightedActions(),middleCellId,claims:game.claims,markStyle:profile.preferences?.markStyle,interactive:game.turn?.canAct&&!commands.busy&&!confirming&&!torchLoading,fog:game.settings.fog&&game.status!=='finished',visibleCells:game.visibleCells,roundRequirements:game.roundRequirements,traps:game.traps});}
+   if(playInstalled){panel.update({...game,definition},commands.busy||confirming,{torch:torchMode,middleCellId,axe:axeMode,awaitingLoss});board?.update({state:game.ownState,hints:fieldHints(game.settings),actions:highlightedActions(),middleCellId,claims:game.claims,markStyle:ctx.getProfile?.()?.preferences?.markStyle||profile.preferences?.markStyle,interactive:game.turn?.canAct&&!commands.busy&&!confirming&&!torchLoading,fog:game.settings.fog&&game.status!=='finished',visibleCells:game.visibleCells,roundRequirements:game.roundRequirements,traps:game.traps,now:Date.now()+serverOffset});}
    presentation.update(game);opponent?.preview.update(opponentView(opponent.id));
   }
  }
@@ -185,21 +188,27 @@ export function gameView(ctx) {
    if(status?.gameSchemaVersion!==CONFIG.gameSchemaVersion)throw new AppError('GAMES_NOT_INSTALLED');
    const data=await api.authRpc('get_game',{p_game_id:gameId,p_include_definition:!definition});if(closed)return;
    if(game&&data.game.revision<game.revision)return;
-   game=data.game;definition=data.game.definition||definition;
+   const previousState=game?.ownState;game=data.game;serverOffset=Date.parse(game.serverNow||new Date().toISOString())-Date.now();definition=data.game.definition||definition;
    const key=`${game.round}:${game.turn?.ownRevision}`;if(ownKey!==key){ownKey=key;torchMode=false;axeMode=false;middleCellId=null;torchActions=[];}
    const nextPowerKey=game.turn?.pendingPowerup?`${game.ownState.pendingChests[0]}:${game.turn.ownRevision}`:null;
    if(powerDialog&&(powerKey!==nextPowerKey||game.status!=='playing'))powerDialog.close();
+   const fresh=lastEvent===null?[]:(game.events||[]).filter(event=>Number(event.id)>lastEvent).sort((a,b)=>Number(a.id)-Number(b.id));
+   const losses=fresh.filter(e=>e.kind==='life_lost');if(losses.length)awaitingLoss=true;
+   const reachedChanged=previousState&&JSON.stringify(previousState.reached)!==JSON.stringify(game.ownState?.reached),hitsChanged=previousState&&JSON.stringify(previousState.monsterHits)!==JSON.stringify(game.ownState?.monsterHits);
    setFeedback(message,'');render();openPowerup();
-   if(game.status==='finished'&&!finishedShown){finishedShown=true;resultsDialog(game);const data=await api.authRpc('get_player_profile');if(!closed)ctx.updateProfile(data.profile);}
-   if(lastEvent!==null){const fresh=(game.events||[]).filter(event=>Number(event.id)>lastEvent).sort((a,b)=>Number(a.id)-Number(b.id));
+   const snapshot=game;
+   if(fresh.length||reachedChanged||hitsChanged)notifications=notifications.then(async()=>{
+    await presentation.idle();if(closed)return;
+    if(hitsChanged)audio.effect('attack');else if(reachedChanged)audio.effect('pencil');
     for(const event of fresh){
-     if(['enemy_defeated','bonus_completed'].includes(event.kind)){const name=game.participants.find(p=>p.id===event.payload.playerId)?.displayName;toast(event.kind==='bonus_completed'?(name?`${name} hat ${event.payload.name} abgeschlossen.`:`${event.payload.name} wurde abgeschlossen.`):name?`${name} hat ${event.payload.name} besiegt.`:`${event.payload.name} wurde besiegt.`,{prominent:true});}
+     if(['enemy_defeated','bonus_completed'].includes(event.kind)){audio.effect('victory');const name=snapshot.participants.find(p=>p.id===event.payload.playerId)?.displayName;toast(event.kind==='bonus_completed'?(name?`${name} hat ${event.payload.name} abgeschlossen.`:`${event.payload.name} wurde abgeschlossen.`):name?`${name} hat ${event.payload.name} besiegt.`:`${event.payload.name} wurde besiegt.`,{prominent:true});}
      if(event.kind==='trap_triggered'&&event.payload.costKind==='diamonds')toast(`Falle: ${event.payload.cost} Diamanten verloren.`);
-     if(event.kind==='life_lost')toast(event.payload.cause==='trap'?`Falle: ${event.payload.amount} Leben verloren.`:event.payload.automatic?'Kein legaler Zug möglich: ein Leben verloren.':'Ein Leben verloren.');
     }
-    const losses=fresh.filter(e=>e.kind==='life_lost');if(losses.length&&game.rulesVersion>=7&&game.status!=='finished'&&!document.querySelector('.life-loss-dialog'))lifeLossDialog(losses);
-   }
+    if(losses.length){await new Promise(resolve=>setTimeout(resolve,2000));if(closed)return;audio.effect('loss');const dialog=lifeLossDialog(losses,{eliminated:snapshot.participants.find(p=>p.id===profile.id)?.eliminated});await new Promise(resolve=>dialog.addEventListener('close',resolve,{once:true}));awaitingLoss=false;if(!closed)render();}
+   }).catch(()=>{});
+   if(game.status==='finished'&&!finishedShown){finishedShown=true;notifications=notifications.then(async()=>{await presentation.idle();if(closed)return;audio.effect('finish');resultsDialog(snapshot,{api});const data=await api.authRpc('get_player_profile');if(!closed)ctx.updateProfile(data.profile);}).catch(()=>{});}
    lastEvent=Math.max(lastEvent||0,...(game.events||[]).map(e=>Number(e.id)));
+
   } catch(error) {
    if(closed)return;
    if(error.code==='GAME_JOIN_REQUIRED'&&!game) {
@@ -209,6 +218,7 @@ export function gameView(ctx) {
    else setFeedback(message,error.message);
   }
  }
+ const hornClock=setInterval(()=>{if(closed||!game)return;const now=Date.now()+serverOffset,key=JSON.stringify([hornIsActive(game.ownState,now),...(game.states||[]).map(s=>hornIsActive(s.state,now))]);if(key!==hornKey){hornKey=key;render();}},250);
  const watch=watchGameChanges([`dungeon:game:${gameId}`],{refresh:load,onState:state=>{if(!closed)live.set(state);},allowRealtime:status?.realtimeAvailable!==false});
- return {element,cleanup:()=>{closed=true;watch.cleanup();board?.cleanup();opponent?.preview.cleanup();panel.cleanup();presentation.cleanup();fullscreen.cleanup();document.body.classList.remove('game-open');document.removeEventListener('pointerdown',outsideMenu);document.removeEventListener('keydown',escapeMenu);for(const dialog of document.querySelectorAll('.game-dialog'))dialog.close();}};
+ return {element,cleanup:()=>{closed=true;clearInterval(hornClock);watch.cleanup();board?.cleanup();opponent?.preview.cleanup();panel.cleanup();presentation.cleanup();fullscreen.cleanup();document.body.classList.remove('game-open');document.removeEventListener('pointerdown',outsideMenu);document.removeEventListener('keydown',escapeMenu);for(const dialog of document.querySelectorAll('.game-dialog'))dialog.close();}};
 }

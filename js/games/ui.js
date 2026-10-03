@@ -1,3 +1,4 @@
+import {replayDialog} from './replay.js';
 import {h,icon,avatar,feedback,setFeedback} from '../dom.js';
 import {GameCommands} from './commands.js';
 import {diceHints,fieldHints} from './rules.js';
@@ -18,9 +19,9 @@ export function lobbyRules(definition){
   rooms.some(r=>r.dimmed)?h('p',{},'Graue Wegfelder schalten eine Angriffszahl beim angrenzenden Monster frei.'):null,
   h('h3',{},'Bonusaufgaben'),...goals.filter(g=>g.type!=='none').map((g,i)=>h('p',{'data-lobby-goal':i},h('strong',{},goalText(g,rooms)),h('br'),`${g.reward.first} ♦ zuerst / ${g.reward.later} ♦ später`)),goals.every(g=>g.type==='none')?h('p',{class:'muted'},'Keine zusätzlichen Bonusaufgaben.'):null);
 }
-export function lifeLossDialog(events){
+export function lifeLossDialog(events,{eliminated=false}={}){
  const amount=events.reduce((sum,e)=>sum+(e.payload.amount||1),0),trap=events.some(e=>e.payload.cause==='trap');
- const dialog=h('dialog',{class:'game-dialog life-loss-dialog','aria-label':'Leben verloren'},h('span',{class:'life-loss-symbol','aria-hidden':true},'♡'),h('h2',{},`${amount===1?'Ein Leben':`${amount} Leben`} verloren`),h('p',{},trap?'Eine scharfe Falle hat dich erwischt.':'Für diesen Zug wurde ein Lebensfeld ausgefüllt.'),h('button',{class:'button primary',autofocus:true,onclick:()=>dialog.close()},'Verstanden'));
+ const dialog=h('dialog',{class:'game-dialog life-loss-dialog','aria-label':'Leben verloren'},h('span',{class:'life-loss-symbol','aria-hidden':true},'♡'),h('h2',{},eliminated?'Ausgeschieden':`${amount===1?'Ein Leben':`${amount} Leben`} verloren`),h('p',{},eliminated?'Deine Lebensanzeige ist vollständig ausgefüllt. Dein bisheriger Punktestand zählt weiterhin.':trap?'Eine scharfe Falle hat dich erwischt.':'Für diesen Zug wurde ein Lebensfeld ausgefüllt.'),h('button',{class:'button primary',autofocus:true,onclick:()=>dialog.close()},'Verstanden'));
  dialog.addEventListener('close',()=>dialog.remove(),{once:true});document.body.append(dialog);dialog.showModal();return dialog;
 }
 export function liveIndicator() {
@@ -43,10 +44,11 @@ export function joinDialog(ctx,game) {
   h('button',{class:'text-button dialog-back',type:'button',onclick:()=>dialog.close()},'Abbrechen'));
  dialog.addEventListener('close',()=>dialog.remove(),{once:true});document.body.append(dialog);dialog.showModal();return dialog;
 }
-export function resultsDialog(game) {
+export function resultsDialog(game,{api=null}={}) {
  const dialog=h('dialog',{class:'workshop-dialog game-dialog result-dialog','aria-label':'Spielergebnis'},h('p',{class:'eyebrow'},'Chronik'),h('h2',{},game.name),h('p',{class:'muted'},`${game.map.name} · ${dateLabel(game.finishedAt)}`),
+  game.startedAt?h('div',{class:'result-summary'},h('span',{},`${game.round||'–'} Runden`),h('span',{},`${Math.max(0,Math.round((Date.parse(game.finishedAt)-Date.parse(game.startedAt))/60000))} Minuten`),h('span',{},`${game.results.length} Spieler`)):null,
   game.status==='cancelled'?h('p',{class:'feedback info'},'Dieses Spiel wurde ohne Wertung abgebrochen.'):h('div',{class:'results-list'},...game.results.map(r=>h('article',{class:`result-row ${r.won?'winner':''}`},
    avatar(r,'small'),h('div',{class:'result-name'},h('strong',{},r.displayName),h('small',{class:'muted'},`${r.diamonds} Diamanten${r.breakdown?.goldPoints?` · ${r.breakdown.goldPoints} Goldpunkte`:''} · ${r.lifePenalty} Lebenspunkte · ${r.monstersDefeated} Gegner${r.removed?' · entfernt':r.eliminated?' · ausgeschieden':''}`),r.breakdown?.bossBonusDiamonds!=null?h('small',{class:'result-breakdown'},`${r.breakdown.otherDiamonds} ♦ gesammelt · ${r.breakdown.specialTaskDiamonds+r.breakdown.customTaskDiamonds} ♦ Spezialaufgaben · ${r.breakdown.bossBonusDiamonds} ♦ Bossgruppen`):null),h('div',{class:'result-points'},r.won?h('span',{class:'winner-label'},'Sieg'):null,h('strong',{},`${r.points} Punkte`))))),
-  h('div',{class:'button-row'},game.participated?h('a',{class:'button secondary',href:gameLink(game.id),onclick:()=>dialog.close()},'Spielraum ansehen'):null,h('button',{class:'button primary',onclick:()=>dialog.close()},'Schließen')));
+  h('div',{class:'button-row'},api&&game.status==='finished'?h('button',{id:'watch-replay',class:'button secondary',onclick:()=>replayDialog(api,game.id)},'Wiederholung ansehen'):null,game.participated?h('a',{class:'button secondary',href:gameLink(game.id),onclick:()=>dialog.close()},'Spielraum ansehen'):null,h('button',{class:'button primary',onclick:()=>dialog.close()},'Schließen')));
  dialog.addEventListener('close',()=>dialog.remove(),{once:true});document.body.append(dialog);dialog.showModal();return dialog;
 }

@@ -124,3 +124,8 @@
 .toolbar .group{border-color:#74957266}.toolbar button{background:#eef1dd;color:#294332;border-color:#abbb93}.toolbar .primary{background:#d5b666;color:#213c2c;border-color:#d5b666}.toolbar button:hover,.toolbar .primary:hover{background:#f4e7b5;color:#213c2c}
 .room.rune .room-body{fill:#f4efff}.room.bonus .room-body{fill:white}.room.trap .room-body{fill:#fff1eb}.room.portal .room-body{fill:#e9f5f1}.room.crazy .room-body{fill:#fdf1ff}.room.goldSack .room-body,.room.goldCoin .room-body{fill:#fff9da}
 .menu select{font:inherit;width:100%;padding:6px;border:1px solid #cad4dc;border-radius:6px}.menu label:has(#defeatedPreview){display:flex;gap:6px;align-items:center}.menu #defeatedPreview{width:auto}
+/* Spezialfelder bündeln, dieselben grünen Werkstattfarben wie die Webapp. */
+.special-tools {position:relative;z-index:25;color:#e9dfbd;}
+.special-tools summary {cursor:pointer;list-style:none;border:1px solid #708974;border-radius:7px;padding:7px 10px;background:#294b3c;font:inherit;}
+.special-tools-menu {position:absolute;left:0;top:calc(100% + 5px);padding:9px;min-width:230px;background:#203e31;border:1px solid #7b987b;border-radius:10px;box-shadow:0 8px 25px #0004;display:grid;gap:5px;}
+.special-tools-menu button {text-align:left;}

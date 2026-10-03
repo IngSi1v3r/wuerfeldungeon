@@ -1,3 +1,4 @@
+import {audio} from './audio.js';
 import {CONFIG} from './config.js';
 import {SessionStore,sessionTokenFromRaw} from './session.js';
 import {Api} from './api.js';
@@ -36,6 +37,9 @@ function toast(message,{prominent=false}={}) {
 }
 function applyPreferences(prefs) {
   document.body.classList.toggle('reduce-motion',Boolean(prefs.reduceMotion));
+  audio.configure(prefs);
+  const forest=document.querySelector('.forest');if(forest){const style=prefs.campStyle||'forest',src=`./assets/forest${style==='forest'?'':'-'+style}.svg`;if(forest.getAttribute('src')!==src)forest.setAttribute('src',src);}
+  for(const key of ['diceStyle','cupStyle','campStyle'])document.body.dataset[key]=prefs[key]||({diceStyle:'ivory',cupStyle:'leather',campStyle:'forest'})[key];
 }
 function updateProfile(next) {
   profile=next;const prefs=cleanPreferences(next.preferences);applyPreferences(prefs);
@@ -170,7 +174,7 @@ async function refreshSession() {
   } catch (error) {if (error.code!=='SESSION_INVALID') {banner.hidden=false;banner.textContent=error.message;}}
   finally {checkingSession=false;}
 }
-window.addEventListener('hashchange',()=>renderRoute());
+window.addEventListener('hashchange',()=>{audio.effect('paper');renderRoute();});
 window.addEventListener('online',()=>{updateNetworkBanner();refreshSession();});
 window.addEventListener('offline',updateNetworkBanner);
 document.addEventListener('visibilitychange',()=>{if (!document.hidden) refreshSession();});

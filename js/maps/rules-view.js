@@ -1,3 +1,4 @@
+import {cellPicker} from './cell-picker.js';
 import {FORMAT,TYPES,GOALS,newRules,cellLabel} from './features.js';
 import {h,feedback,setFeedback} from '../dom.js';
 import {POWERUPS,ENEMIES,defaultRules} from './model.js';
@@ -6,7 +7,7 @@ const label=r=>`${r.name || ({special:'X-Feld',normal:'Wegfeld',diamond:'Diamant
 
 function legacyRulesDialog({document:doc,readOnly,onSave}) {
   const rules=structuredClone(doc.rules || defaultRules()),specials=doc.rooms.filter(r=>r.type==='special'),locked=doc.rooms.filter(r=>ENEMIES.includes(r.type)).flatMap(r=>r.attacks.filter(a=>a.state==='locked').map(a=>({r,a}))),message=feedback();
-  const powers=Object.entries(POWERUPS).map(([key,name])=>({key,node:h('input',{type:'checkbox',checked:doc.allowedPowerups.includes(key),disabled:readOnly}),name}));
+  const powers=Object.entries(POWERUPS).filter(([key])=>!['binocular','horn'].includes(key)).map(([key,name])=>({key,node:h('input',{type:'checkbox',checked:doc.allowedPowerups.includes(key),disabled:readOnly}),name}));
   const unlocks=locked.map(({r,a})=>({r,a,checks:specials.map(s=>({s,input:h('input',{type:'checkbox',disabled:readOnly,checked:rules.unlocks.some(u=>u.targetCellId===r.id&&u.number===a.number&&u.sourceCellId===s.id)})}))}));
   const type=h('select',{id:'custom-goal-type',disabled:readOnly,onchange:renderTargets},...Object.entries({none:'Keine zweite Spezialaufgabe',reachFields:'Bestimmte Felder erreichen',defeatEnemies:'Bestimmte Gegner besiegen',collectDiamonds:'Diamanten sammeln'}).map(([value,text])=>h('option',{value},text)));
   type.value=rules.customGoal.type;
@@ -31,7 +32,7 @@ function legacyRulesDialog({document:doc,readOnly,onSave}) {
 
 export function rulesDialog(options) {
   if(options.document.format!==FORMAT)return legacyRulesDialog(options);
-  const {document:doc,readOnly,onSave}=options,rules=structuredClone(doc.rules || newRules()),message=feedback();
+  const {document:doc,readOnly,onSave,api}=options,rules=structuredClone(doc.rules || newRules()),message=feedback();
   const powers=Object.entries(POWERUPS).map(([key,name])=>({key,node:h('input',{type:'checkbox',checked:doc.allowedPowerups.includes(key),disabled:readOnly}),name}));
   const controls=rules.goals.map((g,i)=>{
     const selected=new Set(g.cellIds),type=h('select',{id:`goal-${i+1}-type`,disabled:readOnly},...Object.entries(GOALS).map(([value,text])=>h('option',{value},text)));
@@ -39,14 +40,14 @@ export function rulesDialog(options) {
     const fieldType=h('select',{id:`goal-${i+1}-field-type`,disabled:readOnly},...Object.entries(TYPES).map(([value,text])=>h('option',{value},text)));fieldType.value=g.fieldType || 'rune';
     const threshold=h('input',{id:i===1?'custom-goal-diamonds':'goal-1-diamonds',type:'number',min:1,max:999,value:g.diamonds,disabled:readOnly});
     const first=h('input',{id:`goal-${i+1}-first`,type:'number',min:0,max:999,value:g.reward.first,disabled:readOnly}),later=h('input',{id:`goal-${i+1}-later`,type:'number',min:0,max:999,value:g.reward.later,disabled:readOnly});
-    const targets=h('div',{class:'rule-targets'}),typeLabel=h('label',{class:'map-form-label'},'Feldart',fieldType),thresholdLabel=h('label',{class:'map-form-label'},'Benötigte Diamanten',threshold);let checks=[];
+    const targets=h('div',{class:'rule-targets'}),count=h('input',{type:'number',min:1,max:Math.max(1,doc.rooms.length),value:Math.max(1,g.cellIds.length||2),disabled:readOnly,'aria-label':'Anzahl Zielfelder'}),pick=h('button',{type:'button',class:'button secondary',disabled:readOnly,onclick:()=>{const enemy=['defeatEnemies','firstEnemies'].includes(type.value),n=type.value==='connect'?2:Number(count.value);if(!Number.isInteger(n)||n<1||n>doc.rooms.filter(r=>!enemy||['monster','boss'].includes(r.type)).length){setFeedback(message,'Bitte eine mögliche Anzahl an Zielfeldern wählen.');return;}dialog.close();cellPicker({api,document:doc,selected:checks.filter(c=>c.input.checked).map(c=>c.r.id),count:n,allowed:r=>!enemy||['monster','boss'].includes(r.type),onDone:ids=>{if(options.isActive?.()===false)return;selected.clear();ids.forEach(id=>selected.add(id));checks.forEach(c=>c.input.checked=selected.has(c.r.id));document.body.append(dialog);dialog.showModal();},onCancel:()=>{if(options.isActive?.()===false)return;document.body.append(dialog);dialog.showModal();}});}},'Felder auf Karte auswählen'),picker=h('div',{class:'rule-picker-controls'},pick,count),typeLabel=h('label',{class:'map-form-label'},'Feldart',fieldType),thresholdLabel=h('label',{class:'map-form-label'},'Benötigte Diamanten',threshold);let checks=[];
     function render(){for(const {r,input} of checks)input.checked?selected.add(r.id):selected.delete(r.id);
       const enemy=['defeatEnemies','firstEnemies'].includes(type.value);
       checks=doc.rooms.filter(r=>!enemy || ['monster','boss'].includes(r.type)).map(r=>({r,input:h('input',{type:'checkbox',disabled:readOnly,checked:selected.has(r.id)})}));
-      targets.hidden=!['reachFields','defeatEnemies','firstEnemies','connect'].includes(type.value);typeLabel.hidden=type.value!=='allType';thresholdLabel.hidden=type.value!=='collectDiamonds';
+      targets.hidden=!['reachFields','defeatEnemies','firstEnemies','connect'].includes(type.value);picker.hidden=targets.hidden;count.hidden=type.value==='connect';typeLabel.hidden=type.value!=='allType';thresholdLabel.hidden=type.value!=='collectDiamonds';
       targets.replaceChildren(...checks.map(({r,input})=>h('label',{class:'rule-check'},input,cellLabel(r))));}
     type.addEventListener('change',render);render();
-    return {section:h('section',{class:'rule-section'},h('h3',{},`Bonusaufgabe ${i+1}`),h('label',{class:'map-form-label'},'Aufgabe',type),typeLabel,targets,thresholdLabel,h('div',{class:'rule-powerups'},h('label',{class:'map-form-label'},'Erstbelohnung · Diamanten',first),h('label',{class:'map-form-label'},'Spätere Belohnung · Diamanten',later))),value(){
+    return {section:h('section',{class:'rule-section'},h('h3',{},`Bonusaufgabe ${i+1}`),h('label',{class:'map-form-label'},'Aufgabe',type),typeLabel,picker,h('details',{},h('summary',{},'Ausgewählte Felder / Liste'),targets),thresholdLabel,h('div',{class:'rule-powerups'},h('label',{class:'map-form-label'},'Erstbelohnung · Diamanten',first),h('label',{class:'map-form-label'},'Spätere Belohnung · Diamanten',later))),value(){
       const reward={first:Number(first.value),later:Number(later.value)},diamonds=Number(threshold.value),cellIds=checks.filter(c=>c.input.checked).map(c=>c.r.id);
       if(![reward.first,reward.later].every(n=>Number.isInteger(n)&&n>=0&&n<=999)||!Number.isInteger(diamonds)||diamonds<1||diamonds>999)throw Error('Belohnungen: 0–999, Diamantenziel: 1–999.');
       if(type.value==='connect'&&cellIds.length!==2)throw Error('Für einen durchgängigen Weg genau zwei Endpunkte auswählen.');
@@ -59,5 +60,5 @@ export function rulesDialog(options) {
     h('section',{class:'rule-section'},h('h3',{},'Automatische Freischaltungen'),h('p',{},'Graue Wegfelder schalten ihre Zahl beim angrenzenden Monster frei. Runenfelder schalten die passende Zahl beim Boss frei.'),
       h('div',{class:'rule-targets'},...(rules.unlocks || []).map(u=>h('p',{},`${cellLabel(doc.rooms.find(r=>r.id===u.sourceCellId))} → #${u.targetCellId} · ${numberLabel(u.number)}`)))),
     ...controls.map(c=>c.section),message,h('div',{class:'button-row'},readOnly?null:h('button',{id:'save-map-rules',class:'button primary',onclick:()=>{try{onSave({...rules,version:2,goals:controls.map(c=>c.value())},powers.filter(p=>p.node.checked).map(p=>p.key));dialog.close();}catch(error){setFeedback(message,error.message);}}},'Übernehmen'),h('button',{class:'button secondary',onclick:()=>dialog.close()},readOnly?'Schließen':'Abbrechen')));
-  dialog.addEventListener('close',()=>dialog.remove(),{once:true});document.body.append(dialog);dialog.showModal();return dialog;
+  dialog.addEventListener('close',()=>dialog.remove());document.body.append(dialog);dialog.showModal();return dialog;
 }

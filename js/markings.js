@@ -1,4 +1,4 @@
-export const MARKING_LABELS=Object.freeze({cross:'Großes X',pencil:'Bleistift',waves:'Wellenlinien',solid:'Ausgemalt',stars:'Sternensiegel',runes:'Runenkreis',claws:'Krallenspuren'});
+export const MARKING_LABELS=Object.freeze({cross:'Großes X',pencil:'Bleistift',waves:'Wellenlinien',solid:'Ausgemalt',stars:'Sternensiegel',runes:'Runenkreis',claws:'Krallenspuren',spiral:'Spirale',weave:'Schraffur',seal:'Abenteurersiegel'});
 
 // Dieselben Vektorstriche für Shop-Vorschau und tatsächlichen Spielplan.
 export function markingPrimitives(style,x,y,w,h){
@@ -15,6 +15,9 @@ export function markingPrimitives(style,x,y,w,h){
  }
  if(style==='runes')return [wash,{tag:'circle',attrs:{cx,cy,r,fill:'none',stroke:'#285d63','stroke-width':4,opacity:.9}},path(`M ${cx} ${cy-r*.78} L ${cx+r*.55} ${cy} L ${cx} ${cy+r*.78} L ${cx-r*.55} ${cy} Z M ${cx-r*.85} ${cy} H ${cx+r*.85} M ${cx} ${cy-r} V ${cy+r}`,{stroke:'#285d63','stroke-width':4,opacity:.9})];
  if(style==='claws')return [wash,...[.16,.42,.68].map(p=>path(`M ${x+w*p} ${y+h*.1} Q ${x+w*(p+.05)} ${y+h*.4} ${x+w*(p+.1)} ${y+h*.45} L ${x+w*(p+.05)} ${y+h*.53} Q ${x+w*(p+.16)} ${y+h*.66} ${x+w*(p+.17)} ${y+h*.9}`,{stroke:'#793b32','stroke-width':6,opacity:.88}))];
+ if(style==='spiral'){const pts=[];for(let i=0;i<=96;i++){const t=i/96,a=t*Math.PI*6,d=r*(1-t*.9);pts.push(`${cx+Math.cos(a)*d} ${cy+Math.sin(a)*d}`);}return [wash,path(`M ${pts.join(' L ')}`,{stroke:'#385c58','stroke-width':4.5,opacity:.9})];}
+ if(style==='weave'){const lines=[];for(let dy=8;dy<h;dy+=12)lines.push(path(`M ${x} ${y+dy} L ${x+w} ${y+dy-5}`,{'stroke-width':3.5}),path(`M ${x+w*dy/h} ${y} L ${x+w*dy/h-6} ${y+h}`,{'stroke-width':2}));return [wash,...lines];}
+ if(style==='seal')return [wash,{tag:'circle',attrs:{cx,cy,r,fill:'none',stroke:'#775229','stroke-width':4,opacity:.92}},path(`M ${cx-r*.5} ${cy} L ${cx-r*.1} ${cy+r*.4} L ${cx+r*.6} ${cy-r*.5}`,{stroke:'#775229','stroke-width':6,opacity:.95})];
  return markingPrimitives('cross',x,y,w,h);
 }
 

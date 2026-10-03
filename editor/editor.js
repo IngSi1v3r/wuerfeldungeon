@@ -6,7 +6,7 @@ import {FORMAT as NEW_FORMAT,TYPES,newRules,compileDocument,upgradeDocument,goal
   const CELL = 24;
   const DIM = { normal:[4,4], diamond:[4,8], chest:[4,8], special:[4,4], rune:[4,4], bonus:[8,8], trap:[4,4], portal:[4,4], crazy:[4,4], goldSack:[4,8], goldCoin:[4,8], monster:[8,8], miniboss:[8,8], boss:[16,8] };
   const TYPE_NAMES = {...TYPES,normal:'Zahlenfeld',diamond:'Diamant',chest:'Schatzkiste',special:'Runenfeld',monster:'Monster',miniboss:'Bonusaufgabe',boss:'Boss'};
-  const COLORS = {rune:['#f4efff','#7958ab'],bonus:['#fff','#625e54'],trap:['#fff1eb','#a65539'],portal:['#e9f5f1','#39847b'],crazy:['#fdf1ff','#925aa4'],goldSack:['#fff9da','#a98224'],goldCoin:['#fff9da','#a98224'],normal:['#fff','#5b7182'],diamond:['#ecf7ff','#3481b5'],chest:['#fff7d6','#a98224'],special:['#f4efff','#7958ab'],monster:['#fff','#625e54'],miniboss:['#fff','#625e54'],boss:['#fff','#625e54']};
+  const COLORS = {rune:['#f4efff','#7958ab'],bonus:['#fff','#625e54'],trap:['#fff1eb','#a65539'],portal:['#e9f5f1','#39847b'],crazy:['#fff','#625e54'],goldSack:['#fff9da','#a98224'],goldCoin:['#fff9da','#a98224'],normal:['#fff','#5b7182'],diamond:['#ecf7ff','#3481b5'],chest:['#fff7d6','#a98224'],special:['#f4efff','#7958ab'],monster:['#fff','#625e54'],miniboss:['#fff','#625e54'],boss:['#fff','#625e54']};
   const FORMAT = NEW_FORMAT;let documentFormat=FORMAT,rules=newRules(),allowedPowerups=['extraLife','redDice','torch'];const defeatedPreviews=new Set();let canonicalPaint=false;
   const imageKey=r=>defeatedPreviews.has(r.id)?'defeatedImage':'image',enemyLayoutKey=r=>defeatedPreviews.has(r.id)?'defeatedImageLayout':'imageLayout';
   const validNumber=n=>n==='doubles'||Number.isInteger(n)&&n>=2&&n<=12;
@@ -85,7 +85,7 @@ import {FORMAT as NEW_FORMAT,TYPES,newRules,compileDocument,upgradeDocument,goal
     if(line)lines.push(line);return lines;
   }
   function svgPrimitive(p){const node=el(p.tag,{...p.attrs,class:'decoration'});if(p.matrix)node.setAttribute('transform',`matrix(${p.matrix.join(' ')})`);if(p.text!==undefined)node.textContent=p.text;return node;}
-  function diceArt(x,y,size=17,color='#263849'){
+  function diceArt(x,y,size=22,color='#263849'){
     const s=size/18,matrix=[s,0,0,s,x-28*s,y-9*s],art=[];
     const add=(tag,attrs)=>art.push({tag,attrs,matrix});
     for(const dx of [0,40]){
@@ -167,13 +167,13 @@ import {FORMAT as NEW_FORMAT,TYPES,newRules,compileDocument,upgradeDocument,goal
     const rect=(rx,ry,rw,rh,fill,stroke,extra={})=>art.push({tag:'rect',attrs:{x:rx,y:ry,width:rw,height:rh,fill,stroke,'stroke-width':1.2,...extra}});
     const diamond=(dx,dy,s=1)=>path(`M ${dx-10*s} ${dy-9*s} L ${dx+10*s} ${dy-9*s} L ${dx+15*s} ${dy-s} L ${dx} ${dy+14*s} L ${dx-15*s} ${dy-s} Z`,'#85c8ed','#3481b5',1.2);
     const requirementWidth=(n,size)=>n==='doubles'?size*56/18:textWidth(String(n),size);
-    const requirement=(n,px,py,size=17,color='#263849',anchor='middle',extra={})=>{if(n==='doubles'){const first=art.length;art.push(...diceArt(anchor==='start'?px+requirementWidth(n,size)/2:px,py,size,color));Object.assign(art[first].attrs,extra,{'data-pasch':'true'});}else text(n,px,py,size,color,anchor,extra);};
+    const requirement=(n,px,py,size=22,color='#263849',anchor='middle',extra={})=>{if(n==='doubles'){const first=art.length;art.push(...diceArt(anchor==='start'?px+requirementWidth(n,size)/2:px,py,size,color));Object.assign(art[first].attrs,extra,{'data-pasch':'true'});}else text(n,px,py,size,color,anchor,extra);};
     if((rules.goals || []).some(g=>g.type==='connect'&&g.cellIds.includes(r.id)))rect(left+9,top+9,w-18,h-18,'none','#d2a137',{'stroke-width':3});
     if(isEnemy(r)){
       // Independent top-left and top-right zones avoid overlap, even for 11 attack numbers.
       const inset=12,attackWidth=(w-2*inset)*.46,hitsWidth=(w-2*inset)*.48;
       const attackRows=size=>{const rows=[];let row=[];for(const attack of r.attacks){const next=[...row,attack],rowWidth=next.reduce((sum,a)=>sum+requirementWidth(a.number,size),0)+(next.length-1)*textWidth(' / ',size);if(row.length&&rowWidth>attackWidth){rows.push(row);row=[];}row.push(attack);}if(row.length)rows.push(row);return rows;};
-      let attackSize=16,rows=attackRows(attackSize);
+      let attackSize=19,rows=attackRows(attackSize);
       while(rows.length*(attackSize+4)>h*.4&&attackSize>11){attackSize--;rows=attackRows(attackSize);}
       rows.forEach((row,j)=>{let ax=left+inset;const ay=top+inset+attackSize/2+j*(attackSize+4);row.forEach((attack,i)=>{
         if(i){text('/',ax+textWidth(' ',attackSize),ay,attackSize,'#697786','start');ax+=textWidth(' / ',attackSize);}
@@ -226,15 +226,22 @@ import {FORMAT as NEW_FORMAT,TYPES,newRules,compileDocument,upgradeDocument,goal
     }
     if(['diamond','chest','goldSack','goldCoin'].includes(r.type)){
       const hasNumber=r.number!==null,wide=w>=h*1.5&&hasNumber;
-      if(wide){const reserved=requirementWidth(r.number,17)+30,artWidth=w-reserved-20;art.push(...iconArt(r.type,left+12+artWidth/2,y,artWidth,h-24));requirement(r.number,left+w-14-requirementWidth(r.number,17)/2,y);}
+      if(wide){const reserved=requirementWidth(r.number,22)+30,artWidth=w-reserved-20;art.push(...iconArt(r.type,left+12+artWidth/2,y,artWidth,h-24));requirement(r.number,left+w-14-requirementWidth(r.number,22)/2,y);}
       else{const artHeight=h-(hasNumber?48:24);art.push(...iconArt(r.type,x,top+12+artHeight/2,w-24,artHeight));if(hasNumber)requirement(r.number,x,top+h-21);}
       return art;
     }
     if(r.type==='portal'){art.push({tag:'circle',attrs:{cx:x,cy:y-12,r:22,fill:'#a0ddd1',stroke:'#387f75','stroke-width':3}});art.push({tag:'circle',attrs:{cx:x,cy:y-12,r:13,fill:'#496e88',stroke:'#e6fffa','stroke-width':2}});if(r.number!=null)requirement(r.number,x,top+h-18);return art;}
-    if(r.type==='trap'){path(`M ${x-28} ${y-14} L ${x-16} ${y-36} L ${x-4} ${y-14} L ${x+8} ${y-36} L ${x+20} ${y-14}`,'#b67c61','#704e3d');if(r.number!=null)requirement(r.number,x,y+3);text(`−${r.trapCost} ${r.trapKind==='life'?'♥':'♦'}`,left+10,top+h-13,12,'#944432','start');return art;}
-    if(r.type==='crazy'){text('↻',left+w-15,top+15,16,'#895398');
+    if(r.type==='trap'){
+      path(`M ${x-29} ${y-18} Q ${x} ${y-39} ${x+29} ${y-18} L ${x+25} ${y-5} Q ${x} ${y+8} ${x-25} ${y-5} Z`,'#9e9a83','#514d42',2);
+      path(`M ${x-22} ${y-18} Q ${x} ${y-31} ${x+22} ${y-18} L ${x+17} ${y-10} Q ${x} ${y-3} ${x-17} ${y-10} Z`,'#433e34','#ded1b0',1.5);
+      for(let i=0;i<5;i++){const px=x-23+i*10;path(`M ${px} ${y-16} L ${px+4} ${y-29} L ${px+8} ${y-16} Z`,'#c7c2ac','#514d42',1);}
+      path(`M ${x-10} ${y-10} L ${x+10} ${y-10} L ${x+5} ${y-3} L ${x-5} ${y-3} Z`,'#b89255','#514d42',1);
+      if(r.number!=null)requirement(r.number,x,y+14);text(`−${r.trapCost} ${r.trapKind==='life'?'♥':'♦'}`,left+10,top+h-13,12,'#944432','start');return art;}
+    if(r.type==='crazy'){
+      rect(left+w-28,top+9,17,17,'#f4e4bf','#5c5542',{rx:3,'data-crazy-icon':true});
+      for(const [dx,dy] of [[4,4],[8.5,8.5],[13,13]])art.push({tag:'circle',attrs:{cx:left+w-28+dx,cy:top+9+dy,r:1.3,fill:'#5c5542','data-crazy-icon':true}});
       const rowsFor=size=>{const rows=[[]];let width=0;for(const n of r.requirements){const add=requirementWidth(n,size)+(rows.at(-1).length?textWidth(' / ',size):0);if(width+add>w-20&&rows.at(-1).length){rows.push([]);width=0;}rows.at(-1).push(n);width+=requirementWidth(n,size)+(rows.at(-1).length>1?textWidth(' / ',size):0);}return rows;};
-      let size=14,rows=rowsFor(size);while(rows.length*(size+4)>h-30&&size>6){size--;rows=rowsFor(size);}rows.forEach((row,i)=>{let ax=left+10;row.forEach((n,j)=>{if(j){text('/',ax,top+30+i*(size+4),size,'#697786','start');ax+=textWidth(' / ',size);}requirement(n,ax,top+30+i*(size+4),size,'#653d74','start');ax+=requirementWidth(n,size);});});if(!r.requirements.length)text('?',x,y,22,'#895398');return art;}
+      let size=16,rows=rowsFor(size);while(rows.length*(size+4)>h-30&&size>6){size--;rows=rowsFor(size);}rows.forEach((row,i)=>{let ax=left+10;row.forEach((n,j)=>{if(j){text('/',ax,top+30+i*(size+4),size,'#697786','start');ax+=textWidth(' / ',size);}requirement(n,ax,top+30+i*(size+4),size,'#653d74','start');ax+=requirementWidth(n,size);});});if(!r.requirements.length)text('?',x,y,22,'#895398');return art;}
 
     if(['special','rune'].includes(r.type))text('✕',x,r.number!==null?y-11:y,13,'#536473');
     if(r.number!==null)requirement(r.number,x,y+(['special','rune'].includes(r.type)?14:0));

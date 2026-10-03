@@ -343,3 +343,35 @@
 }
 @media(prefers-reduced-motion:reduce){.dice-cup{display:none}.roll-scene,.roll-reveal,.roll-reveal .dice-face,.roll-caption{animation:none}}
 .reduce-motion .dice-cup {display:none;}
+/* Runde 2: gemeinsame Oberflächen für Auswahl, Test und Replay. */
+.cell-picker-dialog,.test-mode-dialog,.replay-dialog {width:min(1200px,96vw);max-width:96vw;max-height:96dvh;}
+.cell-picker-dialog .game-board-stage,.replay-dialog .game-board-stage {height:57dvh;min-height:180px;}
+.test-mode-dialog {display:flex;flex-direction:column;gap:10px;padding:18px;}
+.test-mode-dialog:not([open]) {display:none;}
+.test-mode-header {display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.test-mode-header h2 {margin:0;}.test-mode-header>span {flex:1;color:var(--muted);font-size:12px;}
+.test-controls,.test-dock,.test-resource-controls,.rule-picker-controls,.replay-controls {display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.test-board-area {flex:1;min-height:180px;}.test-board-area .game-board-stage {height:48dvh;min-height:180px;}
+.test-power-controls {display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;}
+.test-power-controls>div {display:flex;justify-content:space-between;gap:5px;align-items:center;}
+.test-dock .dice-face {width:36px;height:36px;}.test-dock .combination {font-size:12px;}
+.appearance-settings {display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:22px;}
+body[data-dice-style="forest"] .dice-face.white {background:#bcd1bb;border-color:#627e56;color:#193c2c;}
+body[data-dice-style="midnight"] .dice-face.white {background:#29394e;border-color:#8c9aad;color:#eef2dd;}
+body[data-dice-style="amber"] .dice-face.white {background:#f1cd83;border-color:#9f703c;color:#673d1d;}
+.dice-face svg circle {fill:currentColor;}
+body[data-cup-style="wood"] .dice-cup {filter:sepia(.6) saturate(.7) brightness(1.25) drop-shadow(0 7px 10px #0007);}
+body[data-cup-style="runic"] .dice-cup {filter:hue-rotate(115deg) saturate(.65) drop-shadow(0 0 9px #59c5c56b);}
+.fog-cloud-texture {animation:fog-breathe 18s ease-in-out infinite alternate;transform-origin:center;}
+@keyframes fog-breathe {from{opacity:.12;transform:translate(-8px,-4px)}to{opacity:.28;transform:translate(8px,4px)}}
+.reduce-motion .fog-cloud-texture {animation:none;}
+@media(prefers-reduced-motion:reduce){.fog-cloud-texture{animation:none}}
+.game-immersive .live-indicator {font-size:0;min-width:12px;gap:0;}.game-immersive .live-indicator .status-dot {width:8px;height:8px;}
+.task-cell img {width:30px;height:30px;object-fit:contain;}.task-cell.enemy-task {width:60px;min-height:54px;}.task-cell.enemy-task .task-cell-value {font-size:8px;white-space:normal;text-align:center;}
+.game-immersive #turn-message {font-weight:800;color:#eee3bd;}.turn-panel[data-own-status="act"] #turn-message {color:#ffd38b;}
+.result-summary {display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13px;color:var(--muted);padding:8px 0 16px;}
+.replay-controls input[type="range"] {flex:1;min-width:140px;}.replay-info {margin:8px 0;}
+.roll-scene,.roll-reveal,.roll-reveal .dice-face,.roll-caption {animation-duration:var(--roll-duration,4s);}
+.test-mode-dialog {overflow:auto;}
+.test-mode-dialog>* {flex-shrink:0;}
+.test-board-area {flex:0 0 auto;}

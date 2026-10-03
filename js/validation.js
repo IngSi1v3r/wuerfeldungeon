@@ -1,4 +1,5 @@
-export const MARK_STYLES = Object.freeze(['cross','pencil','waves','solid','stars','runes','claws']);
+import {COSMETICS} from './cosmetics.js';
+export const MARK_STYLES = Object.freeze(['cross','pencil','waves','solid','stars','runes','claws','spiral','weave','seal']);
 export const DEFAULT_PREFERENCES = Object.freeze({markStyle:'cross',sound:true,music:false,reduceMotion:false});
 
 export function normalizeUsername(value) { return String(value ?? '').trim().toLowerCase(); }
@@ -16,6 +17,7 @@ export function validatePassword(value) {
 }
 export function cleanPreferences(value = {}) {
   return {
+    ...Object.fromEntries(Object.entries(COSMETICS).filter(([key])=>value[key]!==undefined).map(([key,s])=>[key,Object.hasOwn(s.choices,value[key])?value[key]:s.default])),
     markStyle:MARK_STYLES.includes(value.markStyle) ? value.markStyle : DEFAULT_PREFERENCES.markStyle,
     sound:typeof value.sound === 'boolean' ? value.sound : DEFAULT_PREFERENCES.sound,
     music:typeof value.music === 'boolean' ? value.music : DEFAULT_PREFERENCES.music,

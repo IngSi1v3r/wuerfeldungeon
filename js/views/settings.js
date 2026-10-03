@@ -1,3 +1,4 @@
+import {COSMETICS,cosmeticValue} from '../cosmetics.js';
 import {h,icon,feedback,setFeedback,setBusy,pageHeading} from '../dom.js';
 import {cleanPreferences} from '../validation.js';
 import {markingPreview,MARKING_LABELS} from '../markings.js';
@@ -11,10 +12,11 @@ export function settingsView(ctx){
  const form=h('form',{id:'settings-form'}),cards=h('div',{class:'mark-options shop-options'}),amount=h('strong',{id:'shop-balance'}),wallet=h('div',{class:'shop-wallet',hidden:!shopEnabled},icon('diamond'),amount,h('span',{},'Diamanten'));
  const heading=h('div',{class:'shop-heading'},h('h2',{},shopEnabled?'Markierungs-Shop':'Dein Markierungsstil'),wallet);
  function toggle(id,label,description,checked){const input=h('input',{type:'checkbox',id,name:id,checked});return {input,node:h('label',{class:'setting-toggle',for:id},h('span',{},h('strong',{},label),h('small',{},description)),h('span',{class:'switch'},input,h('span',{class:'switch-track'})))};}
- const sound=toggle('sound','Soundeffekte','Vorgemerkt für die spätere Audio-Erweiterung.',original.sound),music=toggle('music','Hintergrundmusik','Vorgemerkt für die spätere Audio-Erweiterung.',original.music),motion=toggle('reduceMotion','Weniger Bewegung','Sanfte Hintergrundanimationen und Übergänge ausschalten.',original.reduceMotion);
- motion.input.addEventListener('change',()=>ctx.applyPreferences({reduceMotion:motion.input.checked}));
+ const sound=toggle('sound','Soundeffekte','Papier, Bleistift, Würfel und Spielereignisse.',original.sound),music=toggle('music','Atmosphärischer Hintergrund','Leise Waldluft und mystische Klänge.',original.music),motion=toggle('reduceMotion','Weniger Bewegung','Sanfte Hintergrundanimationen und Übergänge ausschalten.',original.reduceMotion);
+ for(const control of [sound,music,motion])control.input.addEventListener('change',()=>ctx.applyPreferences(values()));
  const reload=h('button',{type:'button',class:'text-button',id:'reload-settings'},'Einstellungen neu laden');
- function values(){return {markStyle:draftStyle,sound:sound.input.checked,music:music.input.checked,reduceMotion:motion.input.checked};}
+ const appearance=Object.fromEntries(Object.entries(COSMETICS).map(([key,s])=>{const input=h('select',{id:key,name:key},...Object.entries(s.choices).map(([value,label])=>h('option',{value},label)));input.value=cosmeticValue(original,key);input.addEventListener('change',()=>ctx.applyPreferences(values()));return [key,{input,node:h('label',{class:'map-form-label'},s.label,input)}];}));
+ function values(){return {...Object.fromEntries(Object.entries(appearance).map(([key,c])=>[key,c.input.value])),markStyle:draftStyle,sound:sound.input.checked,music:music.input.checked,reduceMotion:motion.input.checked};}
  function catalog(){return items||Object.entries(MARKING_LABELS).filter(([s])=>shopEnabled||['cross','pencil','waves','solid'].includes(s)).map(([style,label])=>({style,label,price:style==='cross'?0:null,owned:!shopEnabled||style==='cross'||profile.cosmetics?.unlocked?.includes(style)}));}
  function locks(){for(const card of cards.children){const item=catalog().find(i=>i.style===card.dataset.style);card.querySelector('input').disabled=busy||!item?.owned;const button=card.querySelector('button');if(button)button.disabled=busy||item.price==null||Number(profile.cosmetics?.balance||0)<item.price;}}
  function paintShop(){
@@ -30,9 +32,10 @@ export function settingsView(ctx){
   const previous=cleanPreferences(profile.preferences),updated=cleanPreferences(next.preferences);
   if(draftStyle===previous.markStyle)draftStyle=updated.markStyle;
   for(const [key,control] of [['sound',sound],['music',music],['reduceMotion',motion]])if(control.input.checked===previous[key])control.input.checked=updated[key];
-  profile=next;ctx.updateProfile(next);ctx.applyPreferences({reduceMotion:motion.input.checked});
+  for(const [key,c] of Object.entries(appearance))if(c.input.value===cosmeticValue(previous,key))c.input.value=cosmeticValue(updated,key);
+  profile=next;ctx.updateProfile(next);ctx.applyPreferences(values());
  }
- function adopt(next){refreshProfile(next);const prefs=cleanPreferences(next.preferences);draftStyle=prefs.markStyle;sound.input.checked=prefs.sound;music.input.checked=prefs.music;motion.input.checked=prefs.reduceMotion;ctx.applyPreferences(prefs);paintShop();}
+ function adopt(next){refreshProfile(next);const prefs=cleanPreferences(next.preferences);draftStyle=prefs.markStyle;sound.input.checked=prefs.sound;music.input.checked=prefs.music;motion.input.checked=prefs.reduceMotion;for(const [key,c] of Object.entries(appearance))c.input.value=cosmeticValue(prefs,key);ctx.applyPreferences(prefs);paintShop();}
  async function readShop(reset=false){const result=await ctx.api.authRpc('get_marking_shop');if(disposed)return;items=result.items;if(reset)adopt(result.profile);else {refreshProfile(result.profile);paintShop();}}
  async function run(action){
   if(busy||disposed)return;busy=true;setBusy(form,true);setFeedback(message,'');
@@ -56,10 +59,10 @@ export function settingsView(ctx){
   });
  }
  form.append(h('div',{class:'panel marking-shop',id:'marking-shop'},heading,shopEnabled?h('p',{class:'shop-note'},'Diamanten aus abgeschlossenen Partien · dauerhaft freischalten'):null,cards),
-  h('div',{class:'panel settings-panel'},h('h2',{},'Atmosphäre & Bewegung'),motion.node,h('details',{id:'audio-preferences',class:'audio-preferences'},h('summary',{},'Audio-Vorlieben'),sound.node,music.node)),
+  h('div',{class:'panel settings-panel'},h('h2',{},'Würfel & Lager'),h('div',{class:'appearance-settings'},...Object.values(appearance).map(c=>c.node)),h('h2',{},'Atmosphäre & Bewegung'),motion.node,h('details',{id:'audio-preferences',class:'audio-preferences',open:true},h('summary',{},'Audio-Vorlieben'),sound.node,music.node)),
   message,h('div',{class:'button-row'},h('button',{class:'button primary',type:'submit',id:'save-settings'},icon('check'),'Einstellungen speichern'),reload));
  form.addEventListener('submit',event=>{event.preventDefault();run(async()=>{const result=await ctx.api.authRpc('update_player_preferences',{p_preferences:values(),p_expected_revision:profile.revision});if(!disposed){adopt(result.profile);setFeedback(message,'Deine Einstellungen wurden gespeichert.','success');ctx.toast('Einstellungen gespeichert.');}});});
  reload.addEventListener('click',()=>run(async()=>{if(shopEnabled)await readShop(true);else {const result=await ctx.api.authRpc('get_player_profile');if(!disposed)adopt(result.profile);}if(!disposed)setFeedback(message,'Aktuelle Einstellungen geladen.','success');}));
  paintShop();if(shopEnabled)run(()=>readShop());
- return {element:h('section',{},pageHeading('Einstellungen','Dein Spiel. Dein Stil.'),form),cleanup:()=>{disposed=true;ctx.applyPreferences(cleanPreferences(ctx.getProfile().preferences));},hasUnsavedChanges:()=>JSON.stringify(values())!==JSON.stringify(cleanPreferences(profile.preferences))};
+ return {element:h('section',{},pageHeading('Einstellungen','Dein Spiel. Dein Stil.'),form),cleanup:()=>{disposed=true;ctx.applyPreferences(cleanPreferences(ctx.getProfile().preferences));},hasUnsavedChanges:()=>{const saved=cleanPreferences(profile.preferences);return Object.entries(values()).some(([key,value])=>value!==(COSMETICS[key]?cosmeticValue(saved,key):saved[key]));}};
 }
