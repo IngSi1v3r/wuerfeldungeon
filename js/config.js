@@ -2,7 +2,7 @@
 // Hier niemals einen sb_secret_- oder service_role-Schlüssel eintragen.
 export const CONFIG = Object.freeze({
   appName: 'Würfeldungeon',
-  version: '0.10.0',
+  version: '0.10.1',
   shopSchemaVersion: 1,
   schemaVersion: 1,
   editorSchemaVersion: 2,

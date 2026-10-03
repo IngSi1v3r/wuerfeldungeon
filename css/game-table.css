@@ -360,8 +360,8 @@ body[data-dice-style="forest"] .dice-face.white {background:#bcd1bb;border-color
 body[data-dice-style="midnight"] .dice-face.white {background:#29394e;border-color:#8c9aad;color:#eef2dd;}
 body[data-dice-style="amber"] .dice-face.white {background:#f1cd83;border-color:#9f703c;color:#673d1d;}
 .dice-face svg circle {fill:currentColor;}
-body[data-cup-style="wood"] .dice-cup {filter:sepia(.6) saturate(.7) brightness(1.25) drop-shadow(0 7px 10px #0007);}
-body[data-cup-style="runic"] .dice-cup {filter:hue-rotate(115deg) saturate(.65) drop-shadow(0 0 9px #59c5c56b);}
+.dice-cup[data-cup-style="wood"] {filter:drop-shadow(0 7px 10px #0007);}
+.dice-cup[data-cup-style="runic"] {filter:drop-shadow(0 0 9px #59c5c56b);}
 .fog-cloud-texture {animation:fog-breathe 18s ease-in-out infinite alternate;transform-origin:center;}
 @keyframes fog-breathe {from{opacity:.12;transform:translate(-8px,-4px)}to{opacity:.28;transform:translate(8px,4px)}}
 .reduce-motion .fog-cloud-texture {animation:none;}

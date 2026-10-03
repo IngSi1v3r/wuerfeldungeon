@@ -215,3 +215,11 @@ input[type="checkbox"],input[type="radio"] {accent-color:var(--gold);}
 @media(max-width:600px){.lobby-map>.map-preview-wrap{height:150px}}
 
 .game-board-stage.fog-active,.opponent-miniature svg[data-fog="true"]{background:#283c37}
+
+/* Kartenvorgaben können vor dem Start für eine Partie angepasst werden. */
+.powerup-selection{border:1px solid var(--line);border-radius:14px;padding:18px;margin:18px 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+.powerup-selection legend{padding:0 9px;color:var(--gold);font-size:14px;}
+.powerup-select-item{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:9px;background:#718c6020;cursor:pointer;font-size:12px;}
+.powerup-select-item input{accent-color:var(--gold);flex-shrink:0;}.powerup-select-item strong{font-weight:500;}.powerup-select-item small{display:block;color:var(--muted);font-size:10px;margin-top:4px;}.powerup-select-item.unavailable{opacity:.45;cursor:default;}
+.lobby-powerup-dialog{width:min(760px,calc(100vw - 32px));}.lobby-powers{margin:22px 0;}.lobby-powers .game-badges{margin-bottom:12px;}
+@media(max-width:650px){.powerup-selection{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px;gap:8px;}.powerup-select-item{padding:9px;gap:7px;}}

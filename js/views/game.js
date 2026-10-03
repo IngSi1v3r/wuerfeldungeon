@@ -9,7 +9,7 @@ import {GameCommands} from '../games/commands.js';
 import {watchGameChanges} from '../games/realtime.js';
 import {boardPreview} from '../games/board-preview.js';
 import {settingsBadges,liveIndicator,joinForm,gameStatusLabel,resultsDialog,lobbyRules,lifeLossDialog} from '../games/ui.js';
-import {powerupDialog} from '../games/powerups.js';
+import {powerupDialog,lobbyPowerupDialog,POWERUP_INFO} from '../games/powerups.js';
 import {cellReachable,ENEMY_TYPES,gameWaitKind,fieldHints} from '../games/rules.js';
 import {turnPanel,redDiceDialog} from '../games/turn-panel.js';
 import {renderSection} from '../games/render.js';
@@ -154,7 +154,7 @@ export function gameView(ctx) {
   if(lobby) {
    body.replaceChildren(h('div',{class:'lobby-layout'},h('div',{class:'panel lobby-roster'},h('div',{class:'game-title-row'},h('h2',{},'Euer Trupp'),h('span',{class:'badge',id:'game-player-count'},`${game.playerCount} / ${game.settings.maxPlayers}`)),players(true)),
     h('aside',{class:'panel lobby-map'},game.settings.fog?fogMiniature(api,game.map,definition):mapMiniature(api,game.map),h('h2',{},game.map.name),h('p',{class:'muted'},`${game.map.fields} Felder · ${game.map.enemies} Gegner`),
-     lobbyRules(definition),h('p',{class:'muted'},game.passwordRequired?'Dieser Warteraum ist mit einem Passwort geschützt.':'Freunde können ohne Spielpasswort beitreten.'),h('button',{class:'button secondary',onclick:invite},icon('upload'),'Einladungslink kopieren'))),
+     lobbyRules(definition),h('section',{class:'lobby-powers'},h('h3',{},'Powerups dieser Partie'),h('div',{class:'game-badges'},...(game.powerupPool||definition?.allowedPowerups||[]).filter(p=>game.settings.fog||!['horn','binocular'].includes(p)).map(p=>h('span',{class:'badge'},POWERUP_INFO[p]?.symbol,' ',POWERUP_INFO[p]?.name))),host&&status?.lobbyPowerupsVersion===1?h('button',{type:'button',class:'text-button',id:'edit-lobby-powerups',disabled:commands.busy,onclick:()=>lobbyPowerupDialog({selected:game.powerupPool||definition.allowedPowerups,fog:game.settings.fog,onSave:async powers=>{const result=await command('update_lobby_powerups',{p_game_id:gameId,p_powerups:powers,p_expected_revision:game.revision});if(result?.error)throw result.error;}})},'Powerups anpassen'):null),h('button',{class:'button secondary',onclick:invite},icon('upload'),'Einladungslink kopieren'))),
      h('div',{class:'lobby-controls panel'},h('div',{},h('h2',{},host?'Alle da?':'Wir warten auf den Start.'),host?null:h('p',{class:'muted'},`${game.host.displayName} startet das Spiel.`)),
      h('div',{class:'button-row'},host?h('button',{id:'start-game',class:'button primary',disabled:commands.busy,onclick:()=>command('start_game',{p_game_id:gameId,p_expected_revision:game.revision})},icon('dice'),'Spiel starten'):null,
       h('button',{id:'leave-lobby',class:'button secondary',disabled:commands.busy,onclick:()=>{
