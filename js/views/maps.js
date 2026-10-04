@@ -39,6 +39,7 @@ export function mapsView({api,profile,status,toast}) {
   const search=h('input',{id:'map-search',type:'search',placeholder:'Karte oder Ersteller suchen …','aria-label':'Karten durchsuchen',oninput:render});
   const filter=h('select',{id:'map-filter','aria-label':'Kartenstatus',onchange:render},h('option',{value:'active'},'Alle aktiven Karten'),h('option',{value:'draft'},'Entwürfe'),h('option',{value:'published'},'Veröffentlicht'),h('option',{value:'archived'},'Archiviert'));
   const element=h('section',{class:'map-library'},pageHeading('Kartenwerkstatt','Welten, die wir gemeinsam bauen.','Entwürfe bearbeiten, fertige Karten entdecken und neue Abenteuer zeichnen.'),
+    h('p',{class:'notice mobile-editor-notice',id:'mobile-editor-notice',role:'note'},icon('map'),'Karten bearbeiten funktioniert derzeit am PC. Auf dem Handy kannst du die Karten ansehen und damit spielen.'),
     h('div',{class:'library-toolbar'},h('div',{class:'button-row'},h('button',{id:'new-map',class:'button primary',onclick:()=>create(false)},icon('map'),'Neue Karte'),
       h('button',{id:'import-map',class:'button secondary',onclick:()=>create(true)},icon('upload'),'JSON importieren')),
       h('div',{class:'library-search'},search,filter,h('button',{class:'button secondary',title:'Kartenliste aktualisieren',onclick:load},'↻'))),message,

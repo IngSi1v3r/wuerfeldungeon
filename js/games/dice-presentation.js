@@ -42,7 +42,12 @@ export function dicePresentation({getPreferences=()=>({})}={}){
   label.textContent=`${game.participants.find(p=>p.id===roll.rollerId)?.displayName||'Der Trupp'} würfelt`;
   element.classList.toggle('still-roll',reduced);element.hidden=false;
   element.dataset.round=String(roll.round);
-  const ms=reduced?Math.min(1000,duration):duration;element.style.setProperty('--roll-duration',`${ms/1000}s`);end=Date.now()+ms;timer=setTimeout(stop,ms);
+  const ms=reduced?Math.min(1000,duration):duration;
+  element.style.setProperty('--roll-duration',`${ms/1000}s`);
+  element.style.setProperty('--cup-duration',`${ms*.1875/1000}s`);
+  // Restart the presentation even when two server rolls arrive close together.
+  element.classList.remove('rolling');void element.offsetWidth;element.classList.add('rolling');
+  end=Date.now()+ms;timer=setTimeout(stop,ms);
  }
  return {element,update,stop,remaining:()=>Math.max(0,end-Date.now()),idle:()=>end> Date.now()?new Promise(resolve=>waiters.push(resolve)):Promise.resolve(),cleanup(){closed=true;stop();}};
 }

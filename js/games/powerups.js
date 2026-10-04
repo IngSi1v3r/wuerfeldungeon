@@ -3,8 +3,8 @@ export const POWERUP_INFO=Object.freeze({
  extraLife:{symbol:'♡',name:'Extraleben',description:'Drei zusätzliche Lebensfelder ohne Minuspunkte und ein Diamant.'},
  redDice:{symbol:'⚄',name:'Roter Würfel',description:'Drei zusätzliche Verwendungen des roten Würfels.'},
  torch:{symbol:'🔥',name:'Fackel',description:'Zwei Verwendungen: einen Raum ohne passende Zahl ausleuchten und anschließend sein Nachbarfeld spielen. Gegner können nur das Ziel sein.'},
- axe:{symbol:'🪓',name:'Doppelhit',description:'Zwei Verwendungen: ein Angriff zählt als zwei Treffer. Mit dem roten Würfel kombinierbar.'},
- horn:{symbol:'📯',name:'Horn des Tiefenrufs',description:'Eine Verwendung: enthüllt zehn Sekunden lang die Position aller Monster und Bosse, ohne ihre Wege zu zeigen.'},
+ axe:{symbol:'🪓',name:'Axt des Doppelschlags',description:'Zwei Verwendungen: ein Angriff zählt als zwei Treffer. Mit dem roten Würfel kombinierbar.'},
+ horn:{symbol:'📯',name:'Das Horn des Nebeljägers',description:'Eine Verwendung: enthüllt zehn Sekunden lang die Position aller Monster und Bosse, ohne ihre Wege zu zeigen.'},
  binocular:{symbol:'🔭',name:'Fernglas',description:'Im Nebel dauerhaft drei statt zwei Felder weit sehen. Wirkt sofort für den Rest der Partie.'},
 });
 export function powerupSelection({selected=[],fog=false,id='game-powerups'}={}) {

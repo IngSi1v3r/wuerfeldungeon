@@ -46,6 +46,6 @@ export function elapsedWaitSeconds(game,now=Date.now(),offset=0) {
 export function cellReachable(definition,state,cellId){
  const id=String(cellId),reached=new Set((state?.reached||[]).map(String)),room=definition.document.rooms.find(r=>String(r.id)===id);
  if(!room||reached.has(id))return false;
- if(room.type==='normal'&&room.start)return true;
+ if(room.start&&!['monster','boss','miniboss'].includes(room.type))return true;
  return (Array.isArray(definition.graph)?definition.graph:definition.graph?.edges||[]).some(e=>String(e[0])===id&&reached.has(String(e[1]))||String(e[1])===id&&reached.has(String(e[0])));
 }

@@ -1,6 +1,6 @@
 import {CONFIG} from '../config.js';
 
-export const POWERUPS=Object.freeze({extraLife:'Extraleben',redDice:'Roter Würfel',torch:'Fackel',axe:'Doppelhit',binocular:'Fernglas',horn:'Horn des Tiefenrufs'});
+export const POWERUPS=Object.freeze({extraLife:'Extraleben',redDice:'Roter Würfel',torch:'Fackel',axe:'Axt des Doppelschlags',binocular:'Fernglas',horn:'Das Horn des Nebeljägers'});
 export const ENEMIES=['monster','miniboss','boss'];
 export const defaultRules=()=>({version:1,unlocks:[],customGoal:{type:'none',cellIds:[],diamonds:3},specialReward:{first:3,later:1}});
 export const emptyDocument=()=>({format:'dungeon-layout-v6',rooms:[],closedDoors:{},nextId:1,background:null,printLayout:{format:'auto',padding:24,name:'',board:{x:0,y:0,scale:1},title:{image:null,x:0,y:0,scale:1},rule:{image:null,x:0,y:0,scale:1}},rules:defaultRules(),allowedPowerups:['extraLife','redDice','torch']});

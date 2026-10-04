@@ -12,6 +12,7 @@ function field(label,id,{type='text',autocomplete='off',hint='',...attrs}={}) {
 
 export function authView({api,status,onAuthenticated,initialMessage=''}) {
   let mode='login',disposed=false;
+  const codeRequired=status?.registrationCodeRequired!==false;
   const message=feedback(initialMessage,initialMessage ? 'info' : 'error');
   const tabLogin=h('button',{type:'button',role:'tab',id:'login-tab','aria-selected':'true'},'Anmelden');
   const tabRegister=h('button',{type:'button',role:'tab',id:'register-tab','aria-selected':'false'},'Neuer Spieler');
@@ -30,7 +31,7 @@ export function authView({api,status,onAuthenticated,initialMessage=''}) {
     const submit=h('button',{type:'submit',class:'button primary',id:'auth-submit'},icon(mode==='login' ? 'arrow' : 'sparkle'),mode==='login' ? 'Ins Lager eintreten' : 'Spieler anlegen');
     const closed=mode==='register' && status && !status.registrationOpen;
     form.replaceChildren(username.wrapper,...(mode==='register' ? [display.wrapper] : []),password.wrapper,
-      ...(mode==='register' ? [confirm.wrapper,code.wrapper] : []),
+      ...(mode==='register' ? [confirm.wrapper,...(codeRequired?[code.wrapper]:[])] : []),
       h('label',{class:'checkbox-line',for:'show-password'},show,'Passwort anzeigen'),
       ...(closed ? [h('p',{class:'notice'},'Neue Registrierungen sind noch nicht freigeschaltet. Bestehende Spieler können sich weiterhin anmelden.')] : []),
       submit,
@@ -43,7 +44,7 @@ export function authView({api,status,onAuthenticated,initialMessage=''}) {
       let error=validateUsername(values.username) || (mode==='register' ? validateDisplayName(values.displayName) || validatePassword(values.password) : '');
       if (!values.password) error='Bitte dein Passwort eingeben.';
       if (mode==='register' && values.password!==confirm.input.value) error='Die beiden Passwörter stimmen nicht überein.';
-      if (mode==='register' && !values.accessCode) error='Bitte den Registrierungscode eingeben.';
+      if (mode==='register' && codeRequired && !values.accessCode) error='Bitte den Registrierungscode eingeben.';
       if (error) { setFeedback(message,error); return; }
       setFeedback(message,''); setBusy(form,true); tabLogin.disabled=true; tabRegister.disabled=true;
       submit.textContent=mode==='login' ? 'Das Tor öffnet sich …' : 'Dein Spieler wird angelegt …';

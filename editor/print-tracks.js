@@ -54,9 +54,9 @@ const PRINT_POWERS = Object.freeze({
   extraLife:{name:'Extraleben',detail:'+3 Leben · +1 Diamant',uses:0},
   redDice:{name:'Roter Würfel',detail:'+3 Verwendungen',uses:3},
   torch:{name:'Fackel',detail:'2 Verwendungen',uses:2},
-  axe:{name:'Doppelhit',detail:'2 Verwendungen',uses:2},
+  axe:{name:'Axt des Doppelschlags',detail:'2 Verwendungen',uses:2},
   binocular:{name:'Fernglas',detail:'Sichtweite 3 · dauerhaft',uses:1},
-  horn:{name:'Horn des Tiefenrufs',detail:'Monsterblick · 10 s',uses:1},
+  horn:{name:'Das Horn des Nebeljägers',detail:'Monsterblick · 10 s',uses:1},
 });
 
 export function paintPrintStatus(ctx,area,powers,{panel,text,art}) {
@@ -79,7 +79,7 @@ export function paintPrintStatus(ctx,area,powers,{panel,text,art}) {
   let y=power.y+102;
   for(const key of known){
     const info=PRINT_POWERS[key];ctx.strokeStyle='#586858';ctx.lineWidth=1.3;ctx.strokeRect(power.x+11,y-9,11,11);
-    const lines=key==='horn'?['Horn des','Tiefenrufs']:[info.name];
+    const lines=key==='horn'?['Das Horn des','Nebeljägers']:key==='axe'?['Axt des','Doppelschlags']:[info.name];
     lines.forEach((line,i)=>text(line,power.x+29,y+i*14,12,'left'));
     text(info.detail,power.x+power.w/2,y+lines.length*14+5,10);
     const box=18,gap=7,x=power.x+(power.w-info.uses*(box+gap)+gap)/2;

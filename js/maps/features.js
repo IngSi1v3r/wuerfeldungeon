@@ -8,6 +8,12 @@ export const newRules=()=>({version:2,unlocks:[],goals:[{...goalDefault(),type:'
 export const numberLabel=n=>n==='doubles'?'Pasch':String(n??'–');
 export const cellLabel=r=>`${r.name || TYPES[r.type] || r.type} #${r.id} · ${r.type==='doubleSum'&&r.number!=null?`${r.number} (${r.number/2}+${r.number/2})`:numberLabel(r.number)}`;
 export const COUNT_GOALS=new Set(['allType','reachFields','defeatEnemies','firstEnemies']);
+export const canHaveFieldFlags=room=>!['monster','boss','miniboss'].includes(room.type);
+export function unlockNumbers(room){
+  if(!canHaveFieldFlags(room))return [];
+  const values=room.type==='crazy'?room.requirements:room.type==='bonus'?room.attacks?.map(a=>a.number):room.number==null?[]:[room.number];
+  return [...new Set(values||[])];
+}
 export function goalTargetIds(g,rooms=[]){return g.type==='allType'?rooms.filter(r=>r.type===g.fieldType).map(r=>r.id):g.cellIds||[];}
 export function goalRequiredCount(g,rooms=[]){return COUNT_GOALS.has(g.type)&&g.requiredCount!=null?g.requiredCount:goalTargetIds(g,rooms).length;}
 
@@ -30,15 +36,19 @@ export function compileDocument(raw) {
   d.rules??=newRules();
   const edges=connections(d),unlocks=[];
   for(const source of d.rooms){
-    if(source.number==null || !(source.type==='rune'||source.type==='normal'&&source.dimmed))continue;
+    if(!canHaveFieldFlags(source)||!(source.type==='rune'||source.dimmed))continue;
     for(const target of d.rooms){
-      const linked=source.type==='rune'?target.type==='boss':['monster','boss'].includes(target.type)&&edges.some(e=>e.includes(String(source.id))&&e.includes(String(target.id)));
+      const adjacent=['monster','boss'].includes(target.type)&&edges.some(e=>e.includes(String(source.id))&&e.includes(String(target.id)));
+      const linked=source.type==='rune'&&target.type==='boss'||source.dimmed&&adjacent;
       if(!linked)continue;
       target.attacks??=[];
-      let attack=target.attacks.find(a=>a.number===source.number);
-      if(!attack){attack={number:source.number,state:'locked'};target.attacks.push(attack);}
-      attack.state='locked';target.attacks.sort((a,b)=>(a.number==='doubles'?13:a.number)-(b.number==='doubles'?13:b.number));
-      unlocks.push({sourceCellId:source.id,targetCellId:target.id,number:source.number});
+      for(const number of unlockNumbers(source)){
+        let attack=target.attacks.find(a=>a.number===number);
+        if(!attack){attack={number,state:'locked'};target.attacks.push(attack);}
+        attack.state='locked';
+        unlocks.push({sourceCellId:source.id,targetCellId:target.id,number});
+      }
+      target.attacks.sort((a,b)=>(a.number==='doubles'?13:a.number)-(b.number==='doubles'?13:b.number));
     }
   }
   d.rules.unlocks=unlocks;

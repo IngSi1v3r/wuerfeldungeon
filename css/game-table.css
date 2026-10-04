@@ -164,7 +164,8 @@
 @keyframes notice-in {from{opacity:0;transform:translateY(-10px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
 .dice-presentation {position:absolute;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;pointer-events:none;background:radial-gradient(ellipse at center,#263e3277,transparent 68%);}
 .roll-scene {position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:22px 30px;min-height:170px;min-width:300px;border:1px solid #d8c58a66;border-radius:25px;background:#1b342dee;box-shadow:0 20px 65px #0d271899;animation:roll-stage 2.1s ease both;}
-.dice-cup {position:absolute;top:5px;left:calc(50% - 60px);width:120px;height:145px;filter:drop-shadow(0 7px 10px #0007);animation:cup-shake .75s ease-in-out both;}
+.dice-cup {position:absolute;top:5px;left:calc(50% - 60px);width:120px;height:145px;filter:drop-shadow(0 7px 10px #0007);}
+.rolling .dice-cup {animation:cup-shake var(--cup-duration,.75s) ease-in-out both;}
 .roll-reveal {display:flex;gap:14px;animation:faces-reveal 2.1s ease both;}
 .roll-reveal .dice-face {width:62px;height:62px;border-radius:13px;animation:face-land 2.1s ease both;}
 .roll-reveal .dice-face:nth-child(2) {animation-delay:.04s;}

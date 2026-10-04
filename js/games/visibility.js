@@ -7,7 +7,7 @@ export function graphEdges(definition){
 }
 export function visibleCells(definition,state={},radius=state.powerups?.includes('binocular')?3:2){
  const rooms=definition.document.rooms,byId=new Map(rooms.map(r=>[String(r.id),r])),reached=new Set((state.reached||[]).map(String)),dist=new Map(),queue=[];
- for(const r of rooms)if(reached.has(String(r.id))||r.type==='normal'&&r.start){dist.set(String(r.id),0);queue.push(String(r.id));}
+ for(const r of rooms)if(reached.has(String(r.id))||r.start&&!blocksSight(r)){dist.set(String(r.id),0);queue.push(String(r.id));}
  const neighbors=new Map();for(const [a,b] of graphEdges(definition)){if(!neighbors.has(a))neighbors.set(a,[]);if(!neighbors.has(b))neighbors.set(b,[]);neighbors.get(a).push(b);neighbors.get(b).push(a);}
  for(let i=0;i<queue.length;i++){const id=queue[i],d=dist.get(id);if(d>=radius||blocksSight(byId.get(id))&&!reached.has(id))continue;
   for(const n of neighbors.get(id)||[])if(!dist.has(n)){dist.set(n,d+1);queue.push(n);}

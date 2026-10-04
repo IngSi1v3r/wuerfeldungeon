@@ -1,4 +1,4 @@
-import {FORMAT as NEW_FORMAT,TYPES,newRules,compileDocument,upgradeDocument,goalText} from '../js/maps/features.js';
+import {FORMAT as NEW_FORMAT,TYPES,newRules,compileDocument,upgradeDocument,goalText,canHaveFieldFlags} from '../js/maps/features.js';
 import {printScorePlan,scoreTrackRows,paintPrintScore,paintPrintStatus} from './print-tracks.js';
 import {fieldSymbolArt} from '../js/maps/field-symbols.js';
 
@@ -17,7 +17,6 @@ import {fieldSymbolArt} from '../js/maps/field-symbols.js';
   const isEnemy = r => ['monster','miniboss','boss','bonus'].includes(r.type);
   const resizable = r => ['diamond','chest','goldSack','goldCoin','monster','miniboss','boss','bonus'].includes(r.type);
   const minSize = r => ['miniboss','bonus'].includes(r.type)?4:isEnemy(r)?8:4;
-  const STORAGE_KEY = 'dungeon-layout-editor-v1';
   const board = document.getElementById('board');
   const viewport = document.getElementById('viewport');
   const roomsLayer = document.getElementById('roomsLayer');
@@ -36,21 +35,8 @@ import {fieldSymbolArt} from '../js/maps/field-symbols.js';
 
   function el(tag, attrs = {}) { const node = document.createElementNS(SVG_NS, tag); for (const [k,v] of Object.entries(attrs)) node.setAttribute(k,String(v)); return node; }
   function snapshot() { return JSON.stringify({format:documentFormat,rooms,closedDoors,nextId,background,printLayout,rules,allowedPowerups}); }
-  let storageQueue=Promise.resolve(),storageRevision=0;
-  function storageNotice(message=''){const warning=document.getElementById('storageWarning');warning.textContent=message;warning.hidden=!message;}
-  function browserBackup(mode,value){return new Promise((resolve,reject)=>{
-    const request=indexedDB.open('dungeon-layout-images',1);let settled=false;
-    const timer=setTimeout(()=>{settled=true;reject(Error('Browserspeicher nicht verfügbar'));},2500);
-    request.onupgradeneeded=()=>request.result.createObjectStore('backups');request.onerror=()=>{clearTimeout(timer);reject(request.error);};
-    request.onsuccess=()=>{const db=request.result;if(settled){db.close();return;}clearTimeout(timer);const tx=db.transaction('backups',mode==='read'?'readonly':'readwrite'),store=tx.objectStore('backups');const task=mode==='read'?store.get(STORAGE_KEY):mode==='delete'?store.delete(STORAGE_KEY):store.put(value,STORAGE_KEY);tx.oncomplete=()=>{db.close();resolve(task.result);};tx.onerror=()=>{db.close();reject(tx.error);};};
-  });}
   function persist() {
     if(changeListener)changeListener(JSON.parse(snapshot()));
-    return;
-    // Die Online-App übernimmt die kartenspezifische lokale Sicherung.
-    const data=snapshot(),revision=++storageRevision;let small=false;
-    try{localStorage.setItem(STORAGE_KEY,data);small=true;storageNotice();}catch{storageNotice('Großes Projekt: Browsersicherung läuft …');}
-    storageQueue=storageQueue.catch(()=>{}).then(async()=>{try{await browserBackup(small?'delete':'write',data);if(revision===storageRevision)storageNotice();}catch{if(!small&&revision===storageRevision)storageNotice('Browsersicherung nicht möglich – bitte Projekt als JSON speichern!');}});
   }
   function applyLinks(){if(documentFormat!==FORMAT)return;const d=compileDocument(JSON.parse(snapshot()));for(const r of rooms){const next=d.rooms.find(n=>n.id===r.id);if(isEnemy(r))r.attacks=next.attacks;}rules=d.rules;}
   function saveState(before) {applyLinks();invalidateLayoutBoard(); if(readOnly){restore(before);return;} const now = snapshot(); if (now === before) return; history.push(before); while(history.length>1&&(history.length>100||history.reduce((n,s)=>n+s.length,0)>24000000))history.shift(); future=[]; persist(); render(); }
@@ -169,7 +155,7 @@ import {fieldSymbolArt} from '../js/maps/field-symbols.js';
     const rect=(rx,ry,rw,rh,fill,stroke,extra={})=>art.push({tag:'rect',attrs:{x:rx,y:ry,width:rw,height:rh,fill,stroke,'stroke-width':1.2,...extra}});
     const diamond=(dx,dy,s=1)=>path(`M ${dx-10*s} ${dy-9*s} L ${dx+10*s} ${dy-9*s} L ${dx+15*s} ${dy-s} L ${dx} ${dy+14*s} L ${dx-15*s} ${dy-s} Z`,'#85c8ed','#3481b5',1.2);
     const requirementWidth=(n,size)=>n==='doubles'?size*56/18:textWidth(String(n),size);
-    const requirement=(n,px,py,size=22,color='#263849',anchor='middle',extra={})=>{if(n==='doubles'){const first=art.length;art.push(...diceArt(anchor==='start'?px+requirementWidth(n,size)/2:px,py,size,color));Object.assign(art[first].attrs,extra,{'data-pasch':'true'});}else text(n,px,py,size,color,anchor,extra);};
+    const requirement=(n,px,py,size=22,color=r.dimmed?'#7d8891':'#263849',anchor='middle',extra={})=>{if(n==='doubles'){const first=art.length;art.push(...diceArt(anchor==='start'?px+requirementWidth(n,size)/2:px,py,size,color));Object.assign(art[first].attrs,extra,{'data-pasch':'true'});}else text(n,px,py,size,color,anchor,extra);};
     if((rules.goals || []).some(g=>g.type==='connect'&&g.cellIds.includes(r.id)))rect(left+9,top+9,w-18,h-18,'none','#d2a137',{'stroke-width':3});
     if(isEnemy(r)){
       // Independent top-left and top-right zones avoid overlap, even for 11 attack numbers.
@@ -232,7 +218,7 @@ import {fieldSymbolArt} from '../js/maps/field-symbols.js';
       else{const artHeight=h-(hasNumber?48:24);art.push(...iconArt(r.type,x,top+12+artHeight/2,w-24,artHeight));if(hasNumber)requirement(r.number,x,top+h-21);}
       return art;
     }
-    if(r.type==='portal'){art.push({tag:'circle',attrs:{cx:x,cy:y-12,r:22,fill:'#a0ddd1',stroke:'#387f75','stroke-width':3}});art.push({tag:'circle',attrs:{cx:x,cy:y-12,r:13,fill:'#496e88',stroke:'#e6fffa','stroke-width':2}});if(r.number!=null)requirement(r.number,x,top+h-18);return art;}
+    if(r.type==='portal'){art.push(...fieldSymbolArt('portal',x,top+h*.34,Math.min(w,h)*.62));if(r.number!=null)requirement(r.number,x,top+h-18);return art;}
     if(r.type==='trap'){
       path(`M ${x-29} ${y-18} Q ${x} ${y-39} ${x+29} ${y-18} L ${x+25} ${y-5} Q ${x} ${y+8} ${x-25} ${y-5} Z`,'#9e9a83','#514d42',2);
       path(`M ${x-22} ${y-18} Q ${x} ${y-31} ${x+22} ${y-18} L ${x+17} ${y-10} Q ${x} ${y-3} ${x-17} ${y-10} Z`,'#433e34','#ded1b0',1.5);
@@ -544,9 +530,9 @@ import {fieldSymbolArt} from '../js/maps/field-symbols.js';
     document.getElementById('fieldTypeLabel').hidden=!['normal','doubleSum','rune','crazy','trap','portal'].includes(current.type);
     document.getElementById('fieldType').value=current.type;
     document.getElementById('startField').checked=!!current.start;
-    document.getElementById('dimmedFieldLabel').hidden=current.type!=='normal';
+    document.getElementById('dimmedFieldLabel').hidden=!canHaveFieldFlags(current);
     document.getElementById('dimmedField').checked=!!current.dimmed;
-    document.getElementById('trapForm').hidden=current.type!=='trap';document.getElementById('startField').parentElement.hidden=current.type!=='normal';if(current.type==='trap'){document.getElementById('trapKind').value=current.trapKind;document.getElementById('trapCost').value=current.trapCost;}
+    document.getElementById('trapForm').hidden=current.type!=='trap';document.getElementById('startField').parentElement.hidden=!canHaveFieldFlags(current);if(current.type==='trap'){document.getElementById('trapKind').value=current.trapKind;document.getElementById('trapCost').value=current.trapCost;}
     document.getElementById('defeatedPreview').checked=defeatedPreviews.has(id);document.getElementById('defeatedStatus').textContent=current.defeatedImage?current.defeatedImage.name:'Noch kein besiegtes Bild';document.getElementById('removeDefeatedImage').disabled=!current.defeatedImage;document.getElementById('defeatedPreview').disabled=!current.defeatedImage;
     document.getElementById('enemyForm').hidden=!enemy;document.getElementById('numberHint').hidden=!enemy&&!['crazy','doubleSum'].includes(current.type);document.getElementById('numberHint').textContent=current.type==='doubleSum'?'Die Zahl ist die Paschsumme: 6 erlaubt nur 3 + 3, 8 nur 4 + 4.':current.type==='crazy'?'Klick: Zahl in den möglichen Pool aufnehmen / entfernen.':current.type==='bonus'?'Klick: Anforderung auswählen / entfernen.':'Klick: aktiv (schwarz) → gesperrt (grau) → entfernen.';
     document.getElementById('noNumber').textContent=enemy?'Alle Angriffszahlen entfernen':current.type==='crazy'?'Alle Möglichkeiten entfernen':'Keine Zahl';
@@ -578,12 +564,12 @@ import {fieldSymbolArt} from '../js/maps/field-symbols.js';
   document.getElementById('fieldType').onchange=e=>{
     const r=rooms.find(r=>r.id===menuRoomId),type=e.target.value;
     if(!r||readOnly||!['normal','doubleSum','rune','crazy','trap','portal'].includes(r.type)||!['normal','doubleSum','rune','crazy','trap','portal'].includes(type))return;
-    const before=snapshot(),next=normalizeRoom({...r,type,start:type==='normal'&&r.start,dimmed:type==='normal'&&r.dimmed,number:type==='crazy'||type==='doubleSum'&&(r.number==='doubles'||r.number%2!==0)?null:r.number,requirements:r.requirements??(r.number==null?[]:[r.number])});
+    const before=snapshot(),next=normalizeRoom({...r,type,number:type==='crazy'||type==='doubleSum'&&(r.number==='doubles'||r.number%2!==0)?null:r.number,requirements:r.requirements??(r.number==null?[]:[r.number])});
     Object.assign(r,next);if(type!=='crazy')delete r.requirements;if(type!=='trap'){delete r.trapKind;delete r.trapCost;}
     saveState(before);openMenu(parseFloat(menu.style.left)||8,parseFloat(menu.style.top)||8,r.id);
   };
-  document.getElementById('startField').onchange=e=>{const r=rooms.find(r=>r.id===menuRoomId);if(!r)return;const before=snapshot();r.start=e.target.checked;if(r.start&&r.type==='normal'){r.dimmed=false;document.getElementById('dimmedField').checked=false;}saveState(before);};
-  document.getElementById('dimmedField').onchange=e=>{const r=rooms.find(r=>r.id===menuRoomId);if(!r||r.type!=='normal')return;const before=snapshot();r.dimmed=e.target.checked;if(r.dimmed){r.start=false;document.getElementById('startField').checked=false;}saveState(before);};
+  document.getElementById('startField').onchange=e=>{const r=rooms.find(r=>r.id===menuRoomId);if(!r||!canHaveFieldFlags(r))return;const before=snapshot();r.start=e.target.checked;saveState(before);};
+  document.getElementById('dimmedField').onchange=e=>{const r=rooms.find(r=>r.id===menuRoomId);if(!r||!canHaveFieldFlags(r))return;const before=snapshot();r.dimmed=e.target.checked;saveState(before);};
   for(const [input,key] of [['enemyName','name'],['enemyHits','hits'],['rewardFirst','rewardFirst'],['rewardLater','rewardLater']]){
     document.getElementById(input).onchange=e=>{
       const r=rooms.find(r=>r.id===menuRoomId);if(!r||!isEnemy(r))return;
@@ -727,8 +713,8 @@ import {fieldSymbolArt} from '../js/maps/field-symbols.js';
   };
   document.getElementById('loadTextButton').onclick=()=>loadProject(document.getElementById('loadText').value);
   function normalizeRoom(r){
-    const dimmed=r.type==='normal'&&!!r.dimmed;
-    const normalized={id:r.id,type:r.type,x:r.x,y:r.y,w:r.w??DIM[r.type][0],h:r.h??DIM[r.type][1],number:r.number??null,start:!!r.start&&!dimmed,dimmed};
+    const dimmed=canHaveFieldFlags(r)&&!!r.dimmed;
+    const normalized={id:r.id,type:r.type,x:r.x,y:r.y,w:r.w??DIM[r.type][0],h:r.h??DIM[r.type][1],number:r.number??null,start:canHaveFieldFlags(r)&&!!r.start,dimmed};
     if(isEnemy(r))Object.assign(normalized,{number:null,name:r.name??'',hits:r.hits??4,attacks:(r.attacks??(r.number!=null?[{number:r.number,state:'active'}]:[])).map(a=>({...a})).sort(compareAttacks),rewardFirst:r.rewardFirst??0,rewardLater:r.rewardLater??0,image:r.image?validateImage(r.image):null,imageLayout:r.imageLayout?{x:r.imageLayout.x,y:r.imageLayout.y,w:r.imageLayout.w,h:r.imageLayout.h}:null});
     if(isEnemy(r)){normalized.defeatedImage=r.defeatedImage?validateImage(r.defeatedImage):null;normalized.defeatedImageLayout=r.defeatedImageLayout?{...r.defeatedImageLayout}:null;}
     if(r.type==='trap')Object.assign(normalized,{trapKind:r.trapKind??'diamonds',trapCost:r.trapCost??1});
@@ -777,7 +763,7 @@ import {fieldSymbolArt} from '../js/maps/field-symbols.js';
     ctx.scale(scale,scale);ctx.translate(-x1,-y1);ctx.fillStyle='#fff';ctx.fillRect(x1,y1,width,height);
     if(data.background){const b=data.background;ctx.drawImage(imageCache.get(b.image.src).img,b.x*CELL,b.y*CELL,b.w*CELL,b.h*CELL);}
     for(const r of data.rooms){
-      ctx.fillStyle=r.dimmed?'#d9dde1':r.start?'#d9efc5':COLORS[r.type][0];ctx.fillRect(r.x*CELL,r.y*CELL,r.w*CELL,r.h*CELL);
+      ctx.fillStyle=r.start?'#d9efc5':r.dimmed?'#d9dde1':COLORS[r.type][0];ctx.fillRect(r.x*CELL,r.y*CELL,r.w*CELL,r.h*CELL);
       if(!isEnemy(r))for(const primitive of roomArt(r))paintPrimitive(ctx,primitive);
     }
     for(const primitive of wallArt(data.rooms,data.closedDoors))paintPrimitive(ctx,primitive);
@@ -805,13 +791,7 @@ import {fieldSymbolArt} from '../js/maps/field-symbols.js';
     ctx.restore();
   }
   const observer=new ResizeObserver(()=>{projectGrid();positionMenu();});observer.observe(viewport);
-  async function boot(){
-    document.getElementById('app').inert=true;
-    try{let saved=null;// Online lädt der Host die richtige Karte; kein gemeinsames Offline-Backup.
-if(saved){const raw=JSON.parse(saved),state=validateProject({...raw,format:raw.format||'dungeon-layout-v1',closedDoors:raw.closedDoors||{}});await preloadImages(state);rooms=state.rooms;closedDoors=state.closedDoors;background=state.background;printLayout=state.printLayout;nextId=Math.max(...rooms.map(r=>r.id),0)+1;pruneDoors();}}
-    catch(e){storageNotice('Browsersicherung konnte nicht geladen werden: '+e.message+'. Bitte Projektdatei öffnen.');}
-    finally{fitAll();render();document.getElementById('app').inert=false;document.documentElement.dataset.ready='true';}
-  }
+  function boot(){fitAll();render();document.getElementById('app').inert=false;document.documentElement.dataset.ready='true';}
   // Print layout is separate from world/grid coordinates. All artwork is embedded.
   function defaultPrintLayout(){return {format:'auto',padding:24,name:'',board:{x:0,y:0,scale:1},title:{image:null,x:0,y:0,scale:1},rule:{image:null,x:0,y:0,scale:1}};}
   function validatePrintLayout(raw){
@@ -836,7 +816,7 @@ if(saved){const raw=JSON.parse(saved),state=validateProject({...raw,format:raw.f
   function invalidateLayoutBoard(){layoutBoardCache=null;}
   function paintBoard(ctx,data){const previous=canonicalPaint;canonicalPaint=true;try{
     if(data.background){const b=data.background;ctx.drawImage(imageCache.get(b.image.src).img,b.x*CELL,b.y*CELL,b.w*CELL,b.h*CELL);}
-    for(const r of data.rooms){ctx.fillStyle=r.dimmed?'#d9dde1':r.start?'#d9efc5':COLORS[r.type][0];ctx.fillRect(r.x*CELL,r.y*CELL,r.w*CELL,r.h*CELL);if(!isEnemy(r))for(const p of roomArt(r))paintPrimitive(ctx,p);}
+    for(const r of data.rooms){ctx.fillStyle=r.start?'#d9efc5':r.dimmed?'#d9dde1':COLORS[r.type][0];ctx.fillRect(r.x*CELL,r.y*CELL,r.w*CELL,r.h*CELL);if(!isEnemy(r))for(const p of roomArt(r))paintPrimitive(ctx,p);}
     for(const p of wallArt(data.rooms,data.closedDoors))paintPrimitive(ctx,p);
     for(const r of data.rooms.filter(isEnemy))for(const p of roomArt(r,'image'))paintPrimitive(ctx,p);
     for(const r of data.rooms.filter(isEnemy))for(const p of roomArt(r,'info'))paintPrimitive(ctx,p);
@@ -894,7 +874,7 @@ if(saved){const raw=JSON.parse(saved),state=validateProject({...raw,format:raw.f
     const fields=(g.cellIds||[]).map(id=>rooms.find(r=>r.id===id)).filter(Boolean),top=area.y+Math.min(4,lines.length)*16+10;
     const cols=Math.max(1,Math.ceil(Math.sqrt(fields.length))),rows=Math.ceil(fields.length/cols),size=Math.min(38,area.w/(cols*1.5),(area.y+area.h-top)/Math.max(1,rows)/1.3);
     if(size<7){inkText(ctx,`${fields.length} Zielfelder`,area.x+area.w/2,area.y+area.h-12,12);return;}
-    fields.forEach((f,i)=>{const x=area.x+i%cols*area.w/cols,y=top+Math.floor(i/cols)*size*1.3;ctx.fillStyle=COLORS[f.type]?.[0]||'white';ctx.strokeStyle=COLORS[f.type]?.[1]||'#536473';ctx.lineWidth=1;ctx.fillRect(x,y,size,size);ctx.strokeRect(x,y,size,size);if(['rune','crazy','doubleSum'].includes(f.type)){for(const p of fieldSymbolArt(f.type,x+size/2,y+size*.3,size*.55,f.type==='doubleSum'?f.number/2:3))paintPrimitive(ctx,p);if(f.number==='doubles'){for(const p of diceArt(x+size/2,y+size*.77,size*.13))paintPrimitive(ctx,p);}else inkText(ctx,f.number??'?',x+size/2,y+size*.77,Math.max(7,size*.3));}else if(f.number==='doubles'){for(const p of diceArt(x+size/2,y+size/2,size*.26))paintPrimitive(ctx,p);}else inkText(ctx,f.number??`#${f.id}`,x+size/2,y+size/2,Math.max(8,size*.37));ctx.strokeRect(x+size+3,y+size*.32,size*.25,size*.25);});
+    fields.forEach((f,i)=>{const x=area.x+i%cols*area.w/cols,y=top+Math.floor(i/cols)*size*1.3;ctx.fillStyle=COLORS[f.type]?.[0]||'white';ctx.strokeStyle=COLORS[f.type]?.[1]||'#536473';ctx.lineWidth=1;ctx.fillRect(x,y,size,size);ctx.strokeRect(x,y,size,size);if(['rune','crazy','doubleSum','portal'].includes(f.type)){for(const p of fieldSymbolArt(f.type,x+size/2,y+size*.3,size*.55,f.type==='doubleSum'?f.number/2:3))paintPrimitive(ctx,p);if(f.number==='doubles'){for(const p of diceArt(x+size/2,y+size*.77,size*.13))paintPrimitive(ctx,p);}else inkText(ctx,f.number??'?',x+size/2,y+size*.77,Math.max(7,size*.3));}else if(f.number==='doubles'){for(const p of diceArt(x+size/2,y+size/2,size*.26))paintPrimitive(ctx,p);}else inkText(ctx,f.number??`#${f.id}`,x+size/2,y+size/2,Math.max(8,size*.37));ctx.strokeRect(x+size+3,y+size*.32,size*.25,size*.25);});
   }
   function paintLayout(ctx,g,editing=false){
     ctx.fillStyle='#eeecdf';ctx.fillRect(0,0,g.W,g.H);

@@ -9,7 +9,7 @@ export class TestGame {
  room(id){return this.rooms.find(r=>String(r.id)===String(id));}
  reached(id){return this.state.reached.includes(String(id));}
  neighbor(a,b){return graphEdges(this.definition).some(e=>e.includes(String(a))&&e.includes(String(b)));}
- reachable(id){const r=this.room(id);return !!r&&!this.reached(id)&&(r.type==='normal'&&r.start||this.state.reached.some(a=>this.neighbor(a,id)));}
+ reachable(id){const r=this.room(id);return !!r&&!this.reached(id)&&(r.start&&!['monster','boss','miniboss'].includes(r.type)||this.state.reached.some(a=>this.neighbor(a,id)));}
  options(){return diceCombinations(this.dice,true,this.rooms.some(r=>r.type==='doubleSum'));}
  availablePowers(fog=true){return (this.definition.allowedPowerups||[]).filter(p=>!this.state.powerups.includes(p)&&(fog||!['binocular','horn'].includes(p)));}
  attacks(r,state=this.state){return activeAttacks(r,this.definition.rules,state);}
@@ -38,7 +38,7 @@ export class TestGame {
  play(id,{cheat=false,middle=null,axe=false}={}){
  const r=this.room(id);if(!r)throw Error('Feld nicht gefunden.');
  if(this.reached(id))return {unchanged:true};
- if(!cheat){if(!this.actions(middle).some(a=>a.cellId===String(id)))throw Error('Dieses Feld ist mit dem aktuellen Wurf nicht erreichbar.');if(middle!=null&&this.state.torchUses<1)throw Error('Keine Fackel mehr verfügbar.');if(axe&&(!ENEMY_TYPES.has(r.type)||this.state.axeUses<1))throw Error('Doppelhit benötigt einen Gegner und eine freie Verwendung.');}
+ if(!cheat){if(!this.actions(middle).some(a=>a.cellId===String(id)))throw Error('Dieses Feld ist mit dem aktuellen Wurf nicht erreichbar.');if(middle!=null&&this.state.torchUses<1)throw Error('Keine Fackel mehr verfügbar.');if(axe&&(!ENEMY_TYPES.has(r.type)||this.state.axeUses<1))throw Error('Die Axt des Doppelschlags benötigt einen Gegner und eine freie Verwendung.');}
  if(middle!=null){this.reach(middle);this.state.torchUses--;}
  let defeated=false;
  if(ENEMY_TYPES.has(r.type)){const hits=Math.min(r.hits,(this.state.monsterHits[id]||0)+(axe?2:1));this.state.monsterHits[id]=hits;
