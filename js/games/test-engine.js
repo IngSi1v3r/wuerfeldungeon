@@ -1,5 +1,6 @@
 import {diceCombinations,activeAttacks,ENEMY_TYPES,lifePenalty,pointsSoFar} from './rules.js';
 import {graphEdges,visibleCells,viewVisibility} from './visibility.js';
+import {goalTargetIds,goalRequiredCount} from '../maps/features.js';
 // Bewusst nur Arbeitsspeicher: keine API, kein localStorage, keine Chronik.
 export class TestGame {
  constructor(definition){this.definition=structuredClone(definition);this.reset();}
@@ -9,10 +10,10 @@ export class TestGame {
  reached(id){return this.state.reached.includes(String(id));}
  neighbor(a,b){return graphEdges(this.definition).some(e=>e.includes(String(a))&&e.includes(String(b)));}
  reachable(id){const r=this.room(id);return !!r&&!this.reached(id)&&(r.type==='normal'&&r.start||this.state.reached.some(a=>this.neighbor(a,id)));}
- options(){return diceCombinations(this.dice,true);}
+ options(){return diceCombinations(this.dice,true,this.rooms.some(r=>r.type==='doubleSum'));}
  availablePowers(fog=true){return (this.definition.allowedPowerups||[]).filter(p=>!this.state.powerups.includes(p)&&(fog||!['binocular','horn'].includes(p)));}
  attacks(r,state=this.state){return activeAttacks(r,this.definition.rules,state);}
- matches(r,state=this.state){return (ENEMY_TYPES.has(r.type)?this.attacks(r,state):[String(r.type==='crazy'?this.requirements[r.id]:r.number)]).some(n=>this.options().includes(n));}
+ matches(r,state=this.state){return (ENEMY_TYPES.has(r.type)?this.attacks(r,state):[String(r.type==='crazy'?this.requirements[r.id]:r.type==='doubleSum'?`doubles:${r.number}`:r.number)]).some(n=>this.options().includes(n));}
  actions(middle=null){
  if(this.phase!=='choosing'||this.finished||this.eliminated||this.state.pendingChests.length)return [];
  const preview=middle==null?this.state:{...this.state,reached:[...new Set([...this.state.reached,String(middle),...this.portalPartners(middle)])]};
@@ -50,8 +51,8 @@ export class TestGame {
  connected(a,b){if(!this.reached(a)||!this.reached(b))return false;const seen=new Set([String(a)]),queue=[String(a)];for(const id of queue)for(const [x,y] of graphEdges(this.definition)){const n=x===id?y:y===id?x:null;if(n&&this.reached(n)&&!seen.has(n)){seen.add(n);queue.push(n);}}return seen.has(String(b));}
  awardTasks(){
  const goals=this.definition.rules?.goals||[{type:'allType',fieldType:'special',reward:{first:3,later:1}},{...this.definition.rules?.customGoal,reward:{first:3,later:1}}];
- goals.forEach((g,i)=>{if(!g||g.type==='none'||this.state.taskRewards[i]!=null)return;const ids=g.type==='allType'?this.rooms.filter(r=>r.type===g.fieldType).map(r=>String(r.id)):(g.cellIds||[]).map(String);
- const done=g.type==='collectDiamonds'?this.state.diamonds>=g.diamonds:g.type==='connect'?ids.length===2&&this.connected(...ids):ids.length>0&&ids.every(id=>this.reached(id));
+ for(let pass=0;pass<2;pass++)goals.forEach((g,i)=>{if(!g||g.type==='none'||this.state.taskRewards[i]!=null)return;const ids=goalTargetIds(g,this.rooms).map(String),need=goalRequiredCount(g,this.rooms);
+ const done=g.type==='collectDiamonds'?this.state.diamonds>=g.diamonds:g.type==='connect'?ids.length===2&&this.connected(...ids):need>0&&ids.filter(id=>this.reached(id)&&(g.type!=='firstEnemies'||this.state.firstKills.includes(id))).length>=need;
  if(done){this.state.taskRewards[i]=g.reward.first;this.state.diamonds+=g.reward.first;}});
  }
  loseLife(){if(this.phase!=='choosing'||this.actions().length)throw Error('Es ist noch ein normaler Zug möglich.');this.state.lostLives++;this.phase='waiting_roll';this.eliminated=this.state.lostLives>=11+this.state.extraLives;}

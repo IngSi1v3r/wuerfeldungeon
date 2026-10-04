@@ -13,10 +13,10 @@ export function settingsBadges(settings) {
 export function lobbyRules(definition){
  if(!definition)return null;
  const rooms=definition.document.rooms,types=new Set(rooms.map(r=>r.type)),descriptions={
-  diamond:'Ein Diamant zählt drei Punkte.',chest:'Ein noch nicht gewähltes Powerup auswählen.',rune:'Schaltet die entsprechende Angriffszahl beim Boss frei.',bonus:'Optionale Aufgabe mit Treffern und eigener Belohnung.',trap:'Ab der Runde nach dem ersten Betreten kostet die Falle Diamanten oder Leben.',portal:'Aktiviert automatisch das zweite Portal mit derselben Zahl.',crazy:'Wählt jede Runde eine gemeinsame neue Zahl aus seinem Vorrat.',goldSack:'Zählt zwei Punkte.',goldCoin:'Zählt einen Punkt.'};
+  doubleSum:'Nur der passende Pasch zählt: 6 benötigt 3 + 3, 8 benötigt 4 + 4.',diamond:'Ein Diamant zählt drei Punkte.',chest:'Ein noch nicht gewähltes Powerup auswählen.',rune:'Schaltet die entsprechende Angriffszahl beim Boss auch aus der Ferne frei.',bonus:'Optionale Aufgabe mit Treffern und eigener Belohnung.',trap:'Ab der Runde nach dem ersten Betreten kostet die Falle Diamanten oder Leben.',portal:'Aktiviert automatisch das zweite Portal mit derselben Zahl.',crazy:'Wählt jede Runde eine gemeinsame neue Zahl aus seinem Vorrat.',goldSack:'Zählt zwei Punkte.',goldCoin:'Zählt einen Punkt.'};
  const goals=definition.rules.goals||[{type:'allType',fieldType:'special',reward:{first:3,later:1}}, {...definition.rules.customGoal,reward:{first:3,later:1}}];
  return h('section',{class:'lobby-rules'},h('h3',{},'Diese Welt'),h('dl',{},...Object.entries(descriptions).filter(([type])=>types.has(type)).flatMap(([type,text])=>[h('dt',{},TYPES[type]),h('dd',{},text)])),
-  rooms.some(r=>r.dimmed)?h('p',{},'Graue Wegfelder schalten eine Angriffszahl beim angrenzenden Monster frei.'):null,
+  rooms.some(r=>r.dimmed)?h('p',{},'Graue Wegfelder schalten eine Angriffszahl bei angrenzenden Monstern oder Bossen frei.'):null,
   h('h3',{},'Bonusaufgaben'),...goals.filter(g=>g.type!=='none').map((g,i)=>h('p',{'data-lobby-goal':i},h('strong',{},goalText(g,rooms)),h('br'),`${g.reward.first} ♦ zuerst / ${g.reward.later} ♦ später`)),goals.every(g=>g.type==='none')?h('p',{class:'muted'},'Keine zusätzlichen Bonusaufgaben.'):null);
 }
 export function lifeLossDialog(events,{eliminated=false}={}){

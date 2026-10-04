@@ -2,6 +2,7 @@ import {assetUrl} from '../maps/model.js';
 import {h,icon} from '../dom.js';
 import {sortRequirements,requirementLabel,lifePenalty,pointsSoFar,gameWaitKind,elapsedWaitSeconds,diceHints,roomLabel} from './rules.js';
 import {goalText} from '../maps/features.js';
+import {fieldSymbolNode} from '../maps/field-symbols.js';
 import {renderSection} from './render.js';
 import {diceFace,serverRoll} from './dice.js';
 
@@ -34,7 +35,7 @@ export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onTorch,onAxe
  }
  function goalFor(game,key){return game.definition?.rules.goals?.[key==='special'?0:1];}
  function taskTitle(goal,t,key){
-  if((goal?.type||t.type)==='allType')return ({normal:'Alle Wege',diamond:'Diamanten',chest:'Alle Truhen',rune:'Alle Runen',special:'Alle Runen',monster:'Alle Monster',boss:'Alle Bosse',bonus:'Bonusfelder',trap:'Alle Fallen',portal:'Alle Portale',crazy:'Zufallsfelder',goldSack:'Goldsäcke',goldCoin:'Goldmünzen'})[goal?.fieldType]||'Zielfelder';
+  if((goal?.type||t.type)==='allType')return ({normal:'Wegfelder',doubleSum:'Paschfelder',diamond:'Diamanten',chest:'Schatzkisten',rune:'Runenfelder',special:'Runenfelder',monster:'Monster',boss:'Bosse',bonus:'Bonusfelder',trap:'Fallenfelder',portal:'Portalfelder',crazy:'Zufallsfelder',goldSack:'Goldsäcke',goldCoin:'Goldmünzen'})[goal?.fieldType]||'Zielfelder';
   return ({reachFields:'Zielfelder',defeatEnemies:'Gegner besiegen',firstEnemies:'Erstbesieger',connect:'Weg verbinden',collectDiamonds:'Diamantenziel'})[goal?.type||t.type]||(key==='special'?'Alle Runen':'Bonusaufgabe');
  }
  function taskCell(game,t,id){
@@ -43,7 +44,7 @@ export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onTorch,onAxe
   const symbols={rune:'✕',special:'✕',trap:'⚠',portal:'◎',crazy:'✦',diamond:'♦',chest:'▣',goldSack:'●',goldCoin:'●',bonus:'⚑',monster:'⚔',boss:'⚔',miniboss:'⚔'};
   const image=done&&room?.defeatedImage?room.defeatedImage:room?.image,enemy=['monster','boss','bonus','miniboss'].includes(room?.type);
   return h('span',{class:`task-cell ${enemy?'enemy-task':''} ${done?'checked':''} ${hidden?'unknown':''}`,'data-task-cell':String(id),'data-type':hidden?'unknown':room?.type||'normal',title:hidden?'Im Nebel':`${room?roomLabel(room):`Feld #${id}`}${done?' · erreicht':''}`,'aria-label':hidden?'Zielfeld im Nebel':`${room?roomLabel(room):`Feld #${id}`}${done?' · erreicht':''}`},
-   enemy&&image?h('img',{src:image.src.startsWith('asset:')?assetUrl(image.src):image.src,alt:room.name||'Gegner'}):h('span',{class:'task-cell-symbol','aria-hidden':true},symbols[room?.type]||'·'),h('span',{class:'task-cell-value'},enemy?room.name||`#${id}`:value!=null?requirementLabel(value):`#${id}`),done?h('span',{class:'task-check','aria-hidden':true},'✓'):null);
+   enemy&&image?h('img',{src:image.src.startsWith('asset:')?assetUrl(image.src):image.src,alt:room.name||'Gegner'}):h('span',{class:'task-cell-symbol','aria-hidden':true},['rune','crazy','doubleSum'].includes(room?.type)?fieldSymbolNode(room.type,25,room.type==='doubleSum'?room.number/2:3):symbols[room?.type]||'·'),h('span',{class:'task-cell-value'},enemy?room.name||`#${id}`:value!=null?requirementLabel(value):`#${id}`),done?h('span',{class:'task-check','aria-hidden':true},'✓'):null);
  }
  function taskBody(game,key,expanded=false){
   const t=game.tasks?.[key];if(!t?.enabled)return null;

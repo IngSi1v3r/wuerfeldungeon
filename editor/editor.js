@@ -1,13 +1,14 @@
 import {FORMAT as NEW_FORMAT,TYPES,newRules,compileDocument,upgradeDocument,goalText} from '../js/maps/features.js';
 import {printScorePlan,scoreTrackRows,paintPrintScore,paintPrintStatus} from './print-tracks.js';
+import {fieldSymbolArt} from '../js/maps/field-symbols.js';
 
 (() => {
   'use strict';
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const CELL = 24;
-  const DIM = { normal:[4,4], diamond:[4,8], chest:[4,8], special:[4,4], rune:[4,4], bonus:[8,8], trap:[4,4], portal:[4,4], crazy:[4,4], goldSack:[4,8], goldCoin:[4,8], monster:[8,8], miniboss:[8,8], boss:[16,8] };
+  const DIM = { normal:[4,4], doubleSum:[4,4], diamond:[4,8], chest:[4,8], special:[4,4], rune:[4,4], bonus:[8,8], trap:[4,4], portal:[4,4], crazy:[4,4], goldSack:[4,8], goldCoin:[4,8], monster:[8,8], miniboss:[8,8], boss:[16,8] };
   const TYPE_NAMES = {...TYPES,normal:'Zahlenfeld',diamond:'Diamant',chest:'Schatzkiste',special:'Runenfeld',monster:'Monster',miniboss:'Bonusaufgabe',boss:'Boss'};
-  const COLORS = {rune:['#f4efff','#7958ab'],bonus:['#fff','#625e54'],trap:['#fff1eb','#a65539'],portal:['#e9f5f1','#39847b'],crazy:['#fff','#625e54'],goldSack:['#fff9da','#a98224'],goldCoin:['#fff9da','#a98224'],normal:['#fff','#5b7182'],diamond:['#ecf7ff','#3481b5'],chest:['#fff7d6','#a98224'],special:['#f4efff','#7958ab'],monster:['#fff','#625e54'],miniboss:['#fff','#625e54'],boss:['#fff','#625e54']};
+  const COLORS = {doubleSum:['#fffaf0','#8e6a2c'],rune:['#f4efff','#7958ab'],bonus:['#fff','#625e54'],trap:['#fff1eb','#a65539'],portal:['#e9f5f1','#39847b'],crazy:['#fff','#625e54'],goldSack:['#fff9da','#a98224'],goldCoin:['#fff9da','#a98224'],normal:['#fff','#5b7182'],diamond:['#ecf7ff','#3481b5'],chest:['#fff7d6','#a98224'],special:['#f4efff','#7958ab'],monster:['#fff','#625e54'],miniboss:['#fff','#625e54'],boss:['#fff','#625e54']};
   const FORMAT = NEW_FORMAT;let documentFormat=FORMAT,rules=newRules(),allowedPowerups=['extraLife','redDice','torch'];const defeatedPreviews=new Set();let canonicalPaint=false;
   const imageKey=r=>defeatedPreviews.has(r.id)?'defeatedImage':'image',enemyLayoutKey=r=>defeatedPreviews.has(r.id)?'defeatedImageLayout':'imageLayout';
   const validNumber=n=>n==='doubles'||Number.isInteger(n)&&n>=2&&n<=12;
@@ -239,13 +240,13 @@ import {printScorePlan,scoreTrackRows,paintPrintScore,paintPrintStatus} from './
       path(`M ${x-10} ${y-10} L ${x+10} ${y-10} L ${x+5} ${y-3} L ${x-5} ${y-3} Z`,'#b89255','#514d42',1);
       if(r.number!=null)requirement(r.number,x,y+14);text(`−${r.trapCost} ${r.trapKind==='life'?'♥':'♦'}`,left+10,top+h-13,12,'#944432','start');return art;}
     if(r.type==='crazy'){
-      rect(left+w-28,top+9,17,17,'#f4e4bf','#5c5542',{rx:3,'data-crazy-icon':true});
-      for(const [dx,dy] of [[4,4],[8.5,8.5],[13,13]])art.push({tag:'circle',attrs:{cx:left+w-28+dx,cy:top+9+dy,r:1.3,fill:'#5c5542','data-crazy-icon':true}});
+      art.push(...fieldSymbolArt('crazy',x,top+27,43));
       const rowsFor=size=>{const rows=[[]];let width=0;for(const n of r.requirements){const add=requirementWidth(n,size)+(rows.at(-1).length?textWidth(' / ',size):0);if(width+add>w-20&&rows.at(-1).length){rows.push([]);width=0;}rows.at(-1).push(n);width+=requirementWidth(n,size)+(rows.at(-1).length>1?textWidth(' / ',size):0);}return rows;};
-      let size=16,rows=rowsFor(size);while(rows.length*(size+4)>h-30&&size>6){size--;rows=rowsFor(size);}rows.forEach((row,i)=>{let ax=left+10;row.forEach((n,j)=>{if(j){text('/',ax,top+30+i*(size+4),size,'#697786','start');ax+=textWidth(' / ',size);}requirement(n,ax,top+30+i*(size+4),size,'#653d74','start');ax+=requirementWidth(n,size);});});if(!r.requirements.length)text('?',x,y,22,'#895398');return art;}
+      let size=16,rows=rowsFor(size);while(rows.length*(size+4)>h-56&&size>6){size--;rows=rowsFor(size);}rows.forEach((row,i)=>{let ax=left+10;row.forEach((n,j)=>{if(j){text('/',ax,top+58+i*(size+4),size,'#697786','start');ax+=textWidth(' / ',size);}requirement(n,ax,top+58+i*(size+4),size,'#653d74','start');ax+=requirementWidth(n,size);});});if(!r.requirements.length)text('?',x,top+h*.76,25,'#895398');return art;}
 
-    if(['special','rune'].includes(r.type))text('✕',x,r.number!==null?y-11:y,13,'#536473');
-    if(r.number!==null)requirement(r.number,x,y+(['special','rune'].includes(r.type)?14:0));
+    if(['special','rune'].includes(r.type))art.push(...fieldSymbolArt('rune',x,r.number!==null?top+31:y,38));
+    if(r.type==='doubleSum')art.push(...fieldSymbolArt('doubleSum',x,top+31,74,r.number==null?3:r.number/2));
+    if(r.number!==null)requirement(r.number,x,r.crazyValue?top+h*.77:['special','rune','doubleSum'].includes(r.type)?top+h*.76:y,r.crazyValue?30:22);
     return art;
   }
   function currentImageLayout(r){
@@ -301,7 +302,7 @@ import {printScorePlan,scoreTrackRows,paintPrintScore,paintPrintStatus} from './
     wallsLayer.replaceChildren(...wallArt().map(svgPrimitive));
     const enemies=rooms.filter(isEnemy);enemyImagesLayer.replaceChildren(...enemies.map(r=>drawEnemyLayer(r,'image')));enemyInfoLayer.replaceChildren(...enemies.map(r=>drawEnemyLayer(r,'info')));
     const counts=Object.fromEntries(Object.keys(DIM).map(type=>[type,rooms.filter(r=>r.type===type).length]));
-    document.getElementById('status').textContent=`${rooms.length} Felder (${counts.normal} Weg · ${counts.diamond} Diamant · ${counts.chest} Schatzkisten · ${counts.rune+counts.special} Runen · ${counts.monster} Monster · ${counts.bonus+counts.miniboss} Bonusaufgaben · ${counts.trap} Fallen · ${counts.portal} Portale · ${counts.crazy} verrückte · ${counts.goldSack+counts.goldCoin} Gold · ${counts.boss} Boss) · ${rooms.filter(r=>r.start).length} Startfelder · ${doors.length} Durchgänge${selected.size?' · '+selected.size+' ausgewählt':''}`;
+    document.getElementById('status').textContent=`${rooms.length} Felder (${counts.normal} Weg · ${counts.doubleSum} Pasch · ${counts.diamond} Diamant · ${counts.chest} Schatzkisten · ${counts.rune+counts.special} Runen · ${counts.monster} Monster · ${counts.bonus+counts.miniboss} Bonusaufgaben · ${counts.trap} Fallen · ${counts.portal} Portale · ${counts.crazy} verrückte · ${counts.goldSack+counts.goldCoin} Gold · ${counts.boss} Boss) · ${rooms.filter(r=>r.start).length} Startfelder · ${doors.length} Durchgänge${selected.size?' · '+selected.size+' ausgewählt':''}`;
     document.getElementById('delete').disabled=imageEditRoomId!==null?true:backgroundEdit?!background:!selected.size;
     document.getElementById('undo').disabled=!history.length;
     document.getElementById('redo').disabled=!future.length;
@@ -529,6 +530,7 @@ import {printScorePlan,scoreTrackRows,paintPrintScore,paintPrintStatus} from './
   function refreshNumberButtons(r){
     for(const button of numbers.querySelectorAll('button')){
       const n=button.dataset.number==='doubles'?'doubles':Number(button.dataset.number),state=isEnemy(r)?r.attacks.find(a=>a.number===n)?.state:((r.type==='crazy'?r.requirements.includes(n):r.number===n)?'active':null);
+      button.hidden=r.type==='doubleSum'&&(n==='doubles'||n%2!==0);button.disabled=button.hidden;
       button.classList.toggle('active',state==='active');button.classList.toggle('locked',state==='locked');
       button.setAttribute('aria-pressed',state==='locked'?'mixed':String(state==='active'));
       button.setAttribute('aria-label',`${n==='doubles'?'Pasch':n}: ${state==='active'?'aktiv':state==='locked'?'gesperrt':'nicht gewählt'}`);
@@ -539,12 +541,14 @@ import {printScorePlan,scoreTrackRows,paintPrintScore,paintPrintStatus} from './
   function openMenu(x,y,id){ if(readOnly)return;
     menuRoomId=id;const current=rooms.find(r=>r.id===id),enemy=isEnemy(current);
     document.getElementById('menuTitle').textContent=TYPE_NAMES[current.type]+' bearbeiten';
+    document.getElementById('fieldTypeLabel').hidden=!['normal','doubleSum','rune','crazy','trap','portal'].includes(current.type);
+    document.getElementById('fieldType').value=current.type;
     document.getElementById('startField').checked=!!current.start;
     document.getElementById('dimmedFieldLabel').hidden=current.type!=='normal';
     document.getElementById('dimmedField').checked=!!current.dimmed;
     document.getElementById('trapForm').hidden=current.type!=='trap';document.getElementById('startField').parentElement.hidden=current.type!=='normal';if(current.type==='trap'){document.getElementById('trapKind').value=current.trapKind;document.getElementById('trapCost').value=current.trapCost;}
     document.getElementById('defeatedPreview').checked=defeatedPreviews.has(id);document.getElementById('defeatedStatus').textContent=current.defeatedImage?current.defeatedImage.name:'Noch kein besiegtes Bild';document.getElementById('removeDefeatedImage').disabled=!current.defeatedImage;document.getElementById('defeatedPreview').disabled=!current.defeatedImage;
-    document.getElementById('enemyForm').hidden=!enemy;document.getElementById('numberHint').hidden=!enemy&&current.type!=='crazy';document.getElementById('numberHint').textContent=current.type==='crazy'?'Klick: Zahl in den möglichen Pool aufnehmen / entfernen.':current.type==='bonus'?'Klick: Anforderung auswählen / entfernen.':'Klick: aktiv (schwarz) → gesperrt (grau) → entfernen.';
+    document.getElementById('enemyForm').hidden=!enemy;document.getElementById('numberHint').hidden=!enemy&&!['crazy','doubleSum'].includes(current.type);document.getElementById('numberHint').textContent=current.type==='doubleSum'?'Die Zahl ist die Paschsumme: 6 erlaubt nur 3 + 3, 8 nur 4 + 4.':current.type==='crazy'?'Klick: Zahl in den möglichen Pool aufnehmen / entfernen.':current.type==='bonus'?'Klick: Anforderung auswählen / entfernen.':'Klick: aktiv (schwarz) → gesperrt (grau) → entfernen.';
     document.getElementById('noNumber').textContent=enemy?'Alle Angriffszahlen entfernen':current.type==='crazy'?'Alle Möglichkeiten entfernen':'Keine Zahl';
     document.getElementById('sizeHint').textContent=`${current.w} × ${current.h} Rasterfelder · ${resizable(current)?'Größe über Ziehpunkte ändern.':'Feste Größe.'}`;
     if(enemy){for(const [input,key] of [['enemyName','name'],['enemyHits','hits'],['rewardFirst','rewardFirst'],['rewardLater','rewardLater']])document.getElementById(input).value=current[key];}
@@ -561,6 +565,7 @@ import {printScorePlan,scoreTrackRows,paintPrintScore,paintPrintStatus} from './
   const doublesButton=document.createElement('button');doublesButton.dataset.number='doubles';doublesButton.title='Pasch – zwei gleiche Würfel';const diceSymbol=el('svg',{viewBox:'0 0 56 18','aria-hidden':'true'});diceSymbol.append(...diceArt(28,9,18).map(svgPrimitive));doublesButton.append(diceSymbol);doublesButton.onclick=()=>setNumber('doubles');numbers.append(doublesButton);
   function setNumber(n){
     const r=rooms.find(item=>item.id===menuRoomId);if(!r)return;const before=snapshot();
+    if(r.type==='doubleSum'&&n!=null&&(!Number.isInteger(n)||n<2||n>12||n%2!==0))return;
     if(isEnemy(r)){
       if(n===null)r.attacks=[];
       else{const index=r.attacks.findIndex(a=>a.number===n);if(index<0)r.attacks.push({number:n,state:'active'});else if(r.type!=='bonus'&&r.attacks[index].state==='active')r.attacks[index].state='locked';else r.attacks.splice(index,1);r.attacks.sort(compareAttacks);}
@@ -570,6 +575,13 @@ import {printScorePlan,scoreTrackRows,paintPrintScore,paintPrintStatus} from './
     saveState(before);
   }
   document.getElementById('noNumber').onclick=()=>setNumber(null);
+  document.getElementById('fieldType').onchange=e=>{
+    const r=rooms.find(r=>r.id===menuRoomId),type=e.target.value;
+    if(!r||readOnly||!['normal','doubleSum','rune','crazy','trap','portal'].includes(r.type)||!['normal','doubleSum','rune','crazy','trap','portal'].includes(type))return;
+    const before=snapshot(),next=normalizeRoom({...r,type,start:type==='normal'&&r.start,dimmed:type==='normal'&&r.dimmed,number:type==='crazy'||type==='doubleSum'&&(r.number==='doubles'||r.number%2!==0)?null:r.number,requirements:r.requirements??(r.number==null?[]:[r.number])});
+    Object.assign(r,next);if(type!=='crazy')delete r.requirements;if(type!=='trap'){delete r.trapKind;delete r.trapCost;}
+    saveState(before);openMenu(parseFloat(menu.style.left)||8,parseFloat(menu.style.top)||8,r.id);
+  };
   document.getElementById('startField').onchange=e=>{const r=rooms.find(r=>r.id===menuRoomId);if(!r)return;const before=snapshot();r.start=e.target.checked;if(r.start&&r.type==='normal'){r.dimmed=false;document.getElementById('dimmedField').checked=false;}saveState(before);};
   document.getElementById('dimmedField').onchange=e=>{const r=rooms.find(r=>r.id===menuRoomId);if(!r||r.type!=='normal')return;const before=snapshot();r.dimmed=e.target.checked;if(r.dimmed){r.start=false;document.getElementById('startField').checked=false;}saveState(before);};
   for(const [input,key] of [['enemyName','name'],['enemyHits','hits'],['rewardFirst','rewardFirst'],['rewardLater','rewardLater']]){
@@ -728,6 +740,7 @@ import {printScorePlan,scoreTrackRows,paintPrintScore,paintPrintStatus} from './
     const ids=new Set(),normalized=[];
     for(const raw of data.rooms){
       if(!raw||!Number.isSafeInteger(raw.id)||raw.id<1||raw.id>=Number.MAX_SAFE_INTEGER||ids.has(raw.id)||!Object.hasOwn(DIM,raw.type)||!Number.isSafeInteger(raw.x)||!Number.isSafeInteger(raw.y)||Math.abs(raw.x)>2000||Math.abs(raw.y)>2000||!(raw.number==null||validNumber(raw.number)))throw Error('Ungültiges Feld');
+      if(raw.type==='doubleSum'&&raw.number!=null&&(!Number.isInteger(raw.number)||raw.number%2!==0))throw Error('Bestimmter Pasch: nur die Summen 2, 4, 6, 8, 10 oder 12 sind erlaubt');
       if(raw.type==='trap'&&(!['diamonds','life'].includes(raw.trapKind??'diamonds')||!Number.isInteger(raw.trapCost??1)||(raw.trapCost??1)<1||(raw.trapCost??1)>99))throw Error('Ungültige Fallenkosten');
       if(raw.type==='crazy'&&(!Array.isArray(raw.requirements??[])||(raw.requirements??[]).length>12||!(raw.requirements??[]).every(validNumber)||new Set(raw.requirements).size!==(raw.requirements??[]).length))throw Error('Ungültige Zufallszahlen');
       if(isEnemy(raw)){
@@ -881,7 +894,7 @@ if(saved){const raw=JSON.parse(saved),state=validateProject({...raw,format:raw.f
     const fields=(g.cellIds||[]).map(id=>rooms.find(r=>r.id===id)).filter(Boolean),top=area.y+Math.min(4,lines.length)*16+10;
     const cols=Math.max(1,Math.ceil(Math.sqrt(fields.length))),rows=Math.ceil(fields.length/cols),size=Math.min(38,area.w/(cols*1.5),(area.y+area.h-top)/Math.max(1,rows)/1.3);
     if(size<7){inkText(ctx,`${fields.length} Zielfelder`,area.x+area.w/2,area.y+area.h-12,12);return;}
-    fields.forEach((f,i)=>{const x=area.x+i%cols*area.w/cols,y=top+Math.floor(i/cols)*size*1.3;ctx.fillStyle=COLORS[f.type]?.[0]||'white';ctx.strokeStyle=COLORS[f.type]?.[1]||'#536473';ctx.lineWidth=1;ctx.fillRect(x,y,size,size);ctx.strokeRect(x,y,size,size);if(f.number==='doubles'){for(const p of diceArt(x+size/2,y+size/2,size*.26))paintPrimitive(ctx,p);}else inkText(ctx,f.number??`#${f.id}`,x+size/2,y+size/2,Math.max(8,size*.37));ctx.strokeRect(x+size+3,y+size*.32,size*.25,size*.25);});
+    fields.forEach((f,i)=>{const x=area.x+i%cols*area.w/cols,y=top+Math.floor(i/cols)*size*1.3;ctx.fillStyle=COLORS[f.type]?.[0]||'white';ctx.strokeStyle=COLORS[f.type]?.[1]||'#536473';ctx.lineWidth=1;ctx.fillRect(x,y,size,size);ctx.strokeRect(x,y,size,size);if(['rune','crazy','doubleSum'].includes(f.type)){for(const p of fieldSymbolArt(f.type,x+size/2,y+size*.3,size*.55,f.type==='doubleSum'?f.number/2:3))paintPrimitive(ctx,p);if(f.number==='doubles'){for(const p of diceArt(x+size/2,y+size*.77,size*.13))paintPrimitive(ctx,p);}else inkText(ctx,f.number??'?',x+size/2,y+size*.77,Math.max(7,size*.3));}else if(f.number==='doubles'){for(const p of diceArt(x+size/2,y+size/2,size*.26))paintPrimitive(ctx,p);}else inkText(ctx,f.number??`#${f.id}`,x+size/2,y+size/2,Math.max(8,size*.37));ctx.strokeRect(x+size+3,y+size*.32,size*.25,size*.25);});
   }
   function paintLayout(ctx,g,editing=false){
     ctx.fillStyle='#eeecdf';ctx.fillRect(0,0,g.W,g.H);
@@ -1017,7 +1030,7 @@ if(saved){const raw=JSON.parse(saved),state=validateProject({...raw,format:raw.f
     setRules:(next,powers)=>{if(readOnly)return;const before=snapshot();rules=structuredClone(next);allowedPowerups=[...powers];saveState(before);},
     // Read-only art for the game. Uses the exact same placement as PNG/print.
     getGameArt:()=>{canonicalPaint=true;try{return rooms.map(r=>({id:String(r.id),alive:isEnemy(r)?roomArt(r,'image')[0]?.attrs:null,defeated:isEnemy(r)&&r.defeatedImage?roomArt({...r,image:r.defeatedImage,imageLayout:r.defeatedImageLayout},'image')[0]?.attrs:null,
-      numbers:r.type==='crazy'?Object.fromEntries(r.requirements.map(n=>[String(n),roomArt({...r,type:'normal',number:n})])):null}));}finally{canonicalPaint=false;}},
+      numbers:r.type==='crazy'?Object.fromEntries(r.requirements.map(n=>[String(n),roomArt({...r,type:'normal',number:n,crazyValue:true})])):null}));}finally{canonicalPaint=false;}},
     exportPreview:async()=>{await preloadImages({rooms,background,printLayout});const b=layoutBounds();if(!b)return null;const width=(b.right-b.x)*CELL+16,height=(b.bottom-b.y)*CELL+16,k=Math.min(1,640/width,640/height),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.ceil(width*k));canvas.height=Math.max(1,Math.ceil(height*k));const ctx=canvas.getContext('2d');ctx.scale(k,k);ctx.translate(-b.x*CELL+8,-b.y*CELL+8);ctx.fillStyle='white';ctx.fillRect(b.x*CELL-8,b.y*CELL-8,width,height);canonicalPaint=true;try{paintBoard(ctx,{rooms,background,closedDoors});}finally{canonicalPaint=false;}return {src:canvas.toDataURL('image/png'),width:canvas.width,height:canvas.height,name:'Kartenvorschau'};},
     fit:fitAll,
   });

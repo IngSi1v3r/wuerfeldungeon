@@ -69,8 +69,8 @@ export function boardPreview(api,definition,{onCell=()=>{},onContextCell=()=>{},
     if(previous.crazy.get(id)!==value){
      let numbers=roomGroup.querySelector('[data-crazy-value]');
      if(!numbers){for(const child of [...roomGroup.children])if(!child.classList.contains('room-body')&&!child.hasAttribute('data-crazy-icon')&&child.tagName!=='rect')child.remove();numbers=sv('g',{'data-crazy-value':true});roomGroup.append(numbers);}
-     const primitives=art.get(id)?.numbers?.[value]||[{tag:'text',text:'?',attrs:{x:r.x*24+r.w*12,y:r.y*24+r.h*12,'text-anchor':'middle','dominant-baseline':'central','font-size':20,fill:'#653d74'}}];
-     numbers.replaceChildren(...primitives.map(p=>{const n=sv(p.tag,p.attrs);if(p.text!=null)n.textContent=p.text;return n;}));attr(numbers,'data-number',value);previous.crazy.set(id,value);
+     const primitives=art.get(id)?.numbers?.[value]||[{tag:'text',text:'?',attrs:{x:r.x*24+r.w*12,y:r.y*24+r.h*24*.77,'text-anchor':'middle','dominant-baseline':'central','font-size':30,fill:'#653d74'}}];
+     numbers.replaceChildren(...primitives.map(p=>{const n=sv(p.tag,p.attrs);if(p.matrix)n.setAttribute('transform',`matrix(${p.matrix.join(' ')})`);if(p.text!=null)n.textContent=p.text;return n;}));attr(numbers,'data-number',value);previous.crazy.set(id,value);
     }
    }
    if(r.type==='trap'&&roomGroup){

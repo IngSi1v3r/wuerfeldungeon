@@ -223,3 +223,7 @@ input[type="checkbox"],input[type="radio"] {accent-color:var(--gold);}
 .powerup-select-item input{accent-color:var(--gold);flex-shrink:0;}.powerup-select-item strong{font-weight:500;}.powerup-select-item small{display:block;color:var(--muted);font-size:10px;margin-top:4px;}.powerup-select-item.unavailable{opacity:.45;cursor:default;}
 .lobby-powerup-dialog{width:min(760px,calc(100vw - 32px));}.lobby-powers{margin:22px 0;}.lobby-powers .game-badges{margin-bottom:12px;}
 @media(max-width:650px){.powerup-selection{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px;gap:8px;}.powerup-select-item{padding:9px;gap:7px;}}
+
+/* Teilziele: gleiche Formularsprache wie die übrigen Kartenregeln. */
+.rule-required-count{display:grid;grid-template-columns:minmax(180px,1fr) 140px;gap:10px;align-items:center;margin:14px 0}.rule-required-count>.muted{grid-column:1/-1}.rule-required-count>.map-form-label{margin:0}.rule-required-count[hidden]{display:none}
+@media(max-width:500px){.rule-required-count{grid-template-columns:1fr}.rule-required-count>.muted{grid-column:auto}}

@@ -1,12 +1,13 @@
 // Darstellungshilfen. Die verbindliche Zugprüfung findet in PostgreSQL statt.
 export const ENEMY_TYPES=new Set(['monster','miniboss','boss','bonus']);
 export function sortRequirements(values=[]) {
- return [...new Set(values.map(String))].sort((a,b)=>a==='doubles'?1:b==='doubles'?-1:Number(a)-Number(b));
+ const order=n=>n==='doubles'?13:n.startsWith('doubles:')?14+Number(n.slice(8))/100:Number(n);
+ return [...new Set(values.map(String))].sort((a,b)=>order(a)-order(b));
 }
-export function diceCombinations(dice,includeRed=false) {
+export function diceCombinations(dice,includeRed=false,includeExact=false) {
  if(!Array.isArray(dice)||dice.length!==4||dice.some(v=>!Number.isInteger(v)||v<1||v>6))return [];
  const values=[],length=includeRed?4:3;
- for(let i=0;i<length;i++)for(let j=i+1;j<length;j++){values.push(String(dice[i]+dice[j]));if(dice[i]===dice[j])values.push('doubles');}
+ for(let i=0;i<length;i++)for(let j=i+1;j<length;j++){values.push(String(dice[i]+dice[j]));if(dice[i]===dice[j]){values.push('doubles');if(includeExact)values.push(`doubles:${dice[i]*2}`);}}
  return sortRequirements(values);
 }
 export function activeAttacks(room,rules,state) {
@@ -20,10 +21,10 @@ export function lifePenalty(state) {
 export const pointsSoFar=state=>(state?.diamonds||0)*3+(state?.goldPoints||0)+lifePenalty(state);
 export const diceHints=settings=>settings?.diceHints??settings?.hints??false;
 export const fieldHints=settings=>settings?.fieldHints??settings?.hints??false;
-export const requirementLabel=value=>value==='doubles'?'⚄ = ⚄':String(value);
+export const requirementLabel=value=>value==='doubles'?'⚄ = ⚄':String(value).startsWith('doubles:')?`${Number(String(value).slice(8))/2} + ${Number(String(value).slice(8))/2} (Pasch)`:String(value);
 export function roomLabel(room) {
- const type={normal:'Wegfeld',diamond:'Diamantfeld',chest:'Schatzkiste',special:'Spezialfeld',monster:'Monster',boss:'Boss',miniboss:'Mini-Boss',rune:'Runenfeld',bonus:'Bonusaufgabe',trap:'Falle',portal:'Portal',crazy:'Verrücktes Feld',goldSack:'Goldsack',goldCoin:'Goldmünze'}[room.type]||'Feld';
- return `${type} ${room.name||`#${room.id}`}${room.number!=null?` · ${room.number==='doubles'?'Pasch':room.number}`:''}`;
+ const type={normal:'Wegfeld',doubleSum:'Bestimmter Pasch',diamond:'Diamantfeld',chest:'Schatzkiste',special:'Spezialfeld',monster:'Monster',boss:'Boss',miniboss:'Mini-Boss',rune:'Runenfeld',bonus:'Bonusaufgabe',trap:'Falle',portal:'Portal',crazy:'Verrücktes Feld',goldSack:'Goldsack',goldCoin:'Goldmünze'}[room.type]||'Feld';
+ return `${type} ${room.name||`#${room.id}`}${room.number!=null?` · ${room.number==='doubles'?'Pasch':requirementLabel(room.type==='doubleSum'?`doubles:${room.number}`:room.number)}`:''}`;
 }
 export function elapsedChoiceSeconds(game,now=Date.now(),offset=0) {
  if(!game?.choiceStartedAt||(game.phase!=='choosing'&&!game.participants?.some(p=>p.hasPendingPowerup)))return 0;

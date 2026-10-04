@@ -19,7 +19,7 @@
       <button data-add="boss" title="16 × 8 Rastereinheiten">+ Boss</button>
       <details class="special-tools"><summary>Spezialfelder ▾</summary><div class="special-tools-menu">      <button data-add="rune" title="4 × 4 Rastereinheiten">+ Rune</button>
       <button data-add="bonus" title="8 × 8 Rastereinheiten, bis 4 × 4 verkleinerbar">+ Bonusaufgabe</button>
-      <button data-add="trap">+ Falle</button><button data-add="portal">+ Portal</button><button data-add="crazy">+ Verrücktes Feld</button><button data-add="goldSack">+ Goldsack</button><button data-add="goldCoin">+ Goldmünze</button>
+      <button data-add="doubleSum" title="Nur ein bestimmter Pasch, z. B. 6 = 3 + 3">+ Bestimmter Pasch</button><button data-add="trap">+ Falle</button><button data-add="portal">+ Portal</button><button data-add="crazy">+ Verrücktes Feld</button><button data-add="goldSack">+ Goldsack</button><button data-add="goldCoin">+ Goldmünze</button>
 </div></details>
     </div>
     <div class="group">
@@ -54,6 +54,7 @@
     <div id="imageHint" hidden>Gegnerbild bearbeiten · Bild ziehen · Eckpunkte skalieren proportional · maximal 4 Rasterfelder Überstand · Escape: fertig</div>
     <div class="menu" id="numberMenu" aria-label="Feld bearbeiten" hidden>
       <strong id="menuTitle">Feld bearbeiten</strong>
+      <label id="fieldTypeLabel" class="field-type-label">Feldart (4 × 4)<select id="fieldType"><option value="normal">Wegfeld</option><option value="doubleSum">Bestimmter Pasch</option><option value="rune">Runenfeld</option><option value="crazy">Verrücktes Feld</option><option value="trap">Falle</option><option value="portal">Portal</option></select></label>
       <div class="numbers" id="numbers" aria-label="Zahlen auswählen"></div>
       <p class="hint" id="numberHint" hidden>Klicken: nicht gewählt → schwarz (aktiv) → grau (gesperrt) → nicht gewählt.</p>
       <button id="noNumber" class="wide">Keine Zahl</button>
