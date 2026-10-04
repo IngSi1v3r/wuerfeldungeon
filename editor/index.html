@@ -58,6 +58,11 @@
       <div class="numbers" id="numbers" aria-label="Zahlen auswählen"></div>
       <p class="hint" id="numberHint" hidden>Klicken: nicht gewählt → schwarz (aktiv) → grau (gesperrt) → nicht gewählt.</p>
       <button id="noNumber" class="wide">Keine Zahl</button>
+      <div id="runeForm" class="enemy-form" hidden>
+        <label>Runenwirkung<select id="runeEffect"><option value="unlock">Angriffszahl freischalten</option><option value="hits">Boss treffen</option></select></label>
+        <label id="runeHitsLabel" hidden>Treffer am Boss<input id="runeHits" type="number" min="1" max="100" step="1" inputmode="numeric"></label>
+        <p id="runeHint" class="hint"></p>
+      </div>
       <div id="enemyForm" class="enemy-form" hidden>
         <label>Name<input id="enemyName" type="text" maxlength="80" placeholder="z. B. Lavagolem" autocomplete="off"></label>
         <label>Benötigte Treffer<input id="enemyHits" type="number" min="1" max="100" step="1" inputmode="numeric"></label>

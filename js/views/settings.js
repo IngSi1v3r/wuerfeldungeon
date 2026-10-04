@@ -1,8 +1,8 @@
-import {COSMETICS,cosmeticValue} from '../cosmetics.js';
+import {COSMETICS,cosmeticValue,STARTER_BACKGROUNDS} from '../cosmetics.js';
 import {cosmeticPreview} from '../cosmetic-preview.js';
 import {h,icon,feedback,setFeedback,setBusy,pageHeading} from '../dom.js';
 import {cleanPreferences} from '../validation.js';
-import {markingPreview,MARKING_LABELS} from '../markings.js';
+import {markingPreview,MARKING_LABELS,STARTER_MARKINGS} from '../markings.js';
 import {GameCommands} from '../games/commands.js';
 
 const ANIMATIONS=['none','short','normal','long'];
@@ -38,8 +38,9 @@ export function settingsView(ctx){
  for(const control of [sound,music,motion])control.input.addEventListener('change',()=>ctx.applyPreferences(values()));
  const reload=h('button',{type:'button',class:'text-button',id:'reload-settings'},'Einstellungen neu laden');
  function catalog(key){
-  if(key==='markStyle')return (items||Object.entries(MARKING_LABELS).filter(([style])=>shopEnabled||['cross','pencil','waves','solid'].includes(style)).map(([style,label])=>({style,label,price:style==='cross'?0:null,owned:!shopEnabled||style==='cross'||profile.cosmetics?.unlocked?.includes(style)}))).map(item=>({...item,key,value:item.style}));
-  return (cosmeticItems?.filter(item=>item.category===key)||Object.entries(COSMETICS[key].choices).map(([value,label])=>({category:key,value,label,price:value===COSMETICS[key].default?0:null,owned:!cosmeticShop||value===COSMETICS[key].default||profile.cosmetics?.cosmeticUnlocked?.[key]?.includes(value)}))).map(item=>({...item,key}));
+  if(key==='markStyle')return (items||Object.entries(MARKING_LABELS).filter(([style])=>shopEnabled||['cross','pencil','waves','solid'].includes(style)).map(([style,label])=>({style,label,price:STARTER_MARKINGS.includes(style)?0:null,owned:!shopEnabled||STARTER_MARKINGS.includes(style)||profile.cosmetics?.unlocked?.includes(style)}))).map(item=>({...item,key,value:item.style}));
+  const free=value=>value===COSMETICS[key].default||key==='campStyle'&&STARTER_BACKGROUNDS.includes(value);
+  return (cosmeticItems?.filter(item=>item.category===key)||Object.entries(COSMETICS[key].choices).map(([value,label])=>({category:key,value,label,price:free(value)?0:null,owned:!cosmeticShop||free(value)||profile.cosmetics?.cosmeticUnlocked?.[key]?.includes(value)}))).map(item=>({...item,key}));
  }
  function locks(){
   for(const [key,grid] of Object.entries(cards))for(const card of grid.children){

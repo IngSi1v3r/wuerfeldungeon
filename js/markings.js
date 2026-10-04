@@ -1,4 +1,5 @@
-export const MARKING_LABELS=Object.freeze({cross:'Großes X',pencil:'Bleistift',waves:'Wellenlinien',solid:'Ausgemalt',stars:'Sternensiegel',runes:'Runenkreis',claws:'Krallenspuren',spiral:'Spirale',weave:'Schraffur',seal:'Abenteurersiegel'});
+export const STARTER_MARKINGS=Object.freeze(['cross','pencil','weave']);
+export const MARKING_LABELS=Object.freeze({cross:'Großes X',pencil:'Bleistift',weave:'Schraffur',waves:'Wellenlinien',spiral:'Spirale',solid:'Ausgemalt',seal:'Abenteurersiegel',stars:'Sternensiegel',runes:'Runenkreis',claws:'Krallenspuren'});
 
 // Dieselben Vektorstriche für Shop-Vorschau und tatsächlichen Spielplan.
 export function markingPrimitives(style,x,y,w,h){

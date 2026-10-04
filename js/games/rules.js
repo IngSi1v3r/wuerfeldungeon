@@ -24,7 +24,7 @@ export const fieldHints=settings=>settings?.fieldHints??settings?.hints??false;
 export const requirementLabel=value=>value==='doubles'?'⚄ = ⚄':String(value).startsWith('doubles:')?`${Number(String(value).slice(8))/2} + ${Number(String(value).slice(8))/2} (Pasch)`:String(value);
 export function roomLabel(room) {
  const type={normal:'Wegfeld',doubleSum:'Bestimmter Pasch',diamond:'Diamantfeld',chest:'Schatzkiste',special:'Spezialfeld',monster:'Monster',boss:'Boss',miniboss:'Mini-Boss',rune:'Runenfeld',bonus:'Bonusaufgabe',trap:'Falle',portal:'Portal',crazy:'Verrücktes Feld',goldSack:'Goldsack',goldCoin:'Goldmünze'}[room.type]||'Feld';
- return `${type} ${room.name||`#${room.id}`}${room.number!=null?` · ${room.number==='doubles'?'Pasch':requirementLabel(room.type==='doubleSum'?`doubles:${room.number}`:room.number)}`:''}`;
+ return `${type} ${room.name||`#${room.id}`}${room.number!=null?` · ${room.number==='doubles'?'Pasch':requirementLabel(room.type==='doubleSum'?`doubles:${room.number}`:room.number)}`:''}${room.type==='rune'&&room.runeEffect==='hits'?` · ${room.runeHits??3} Bosstreffer`:''}`;
 }
 export function elapsedChoiceSeconds(game,now=Date.now(),offset=0) {
  if(!game?.choiceStartedAt||(game.phase!=='choosing'&&!game.participants?.some(p=>p.hasPendingPowerup)))return 0;

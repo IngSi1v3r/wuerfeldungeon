@@ -1,3 +1,4 @@
+export const STARTER_BACKGROUNDS=Object.freeze(['forest','dawn']);
 export const COSMETICS=Object.freeze({
  diceStyle:{label:'Würfeldesign',default:'ivory',choices:{ivory:'Elfenbein',forest:'Waldgrün',midnight:'Mitternacht',amber:'Bernstein'}},
  cupStyle:{label:'Würfelbecher',default:'leather',choices:{leather:'Leder',wood:'Holz',runic:'Runenbecher'}},

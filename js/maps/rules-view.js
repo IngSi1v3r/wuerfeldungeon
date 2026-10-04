@@ -65,8 +65,8 @@ export function rulesDialog(options) {
   });
   const dialog=h('dialog',{class:'workshop-dialog rules-dialog','aria-label':'Spielregeln'},h('h2',{},'Spielregeln'),
     h('section',{class:'rule-section'},h('h3',{},'Powerups aus Schatzkisten'),h('div',{class:'rule-powerups'},...powers.map(p=>h('label',{class:'rule-check'},p.node,p.name)))),
-    h('section',{class:'rule-section'},h('h3',{},'Automatische Freischaltungen'),h('p',{},'Graue Wegfelder schalten ihre Zahl bei angrenzenden Monstern oder Bossen über offene Durchgänge frei. Runenfelder schalten die passende Bosszahl auch aus der Ferne frei.'),
-      h('div',{class:'rule-targets'},...(rules.unlocks || []).map(u=>h('p',{},`${cellLabel(doc.rooms.find(r=>r.id===u.sourceCellId))} → #${u.targetCellId} · ${numberLabel(u.number)}`)))),
+    h('section',{class:'rule-section'},h('h3',{},'Runen & Angriffsfelder'),h('p',{},'Graue Wegfelder schalten ihre Zahl bei angrenzenden Monstern oder Bossen über offene Durchgänge frei. Runen schalten eine Bosszahl frei oder verursachen beim Erreichen die eingestellten Bosstreffer.'),
+      h('div',{class:'rule-targets'},...(rules.unlocks || []).map(u=>h('p',{},`${cellLabel(doc.rooms.find(r=>r.id===u.sourceCellId))} → #${u.targetCellId} · ${numberLabel(u.number)}`)),...(rules.bossHits||[]).map(u=>h('p',{},`${cellLabel(doc.rooms.find(r=>r.id===u.sourceCellId))} → Boss #${u.targetCellId} · ${u.hits} Treffer`)))),
     ...controls.map(c=>c.section),message,h('div',{class:'button-row'},readOnly?null:h('button',{id:'save-map-rules',class:'button primary',onclick:()=>{try{onSave({...rules,version:2,goals:controls.map(c=>c.value())},powers.filter(p=>p.node.checked).map(p=>p.key));dialog.close();}catch(error){setFeedback(message,error.message);}}},'Übernehmen'),h('button',{class:'button secondary',onclick:()=>dialog.close()},readOnly?'Schließen':'Abbrechen')));
   dialog.addEventListener('close',()=>dialog.remove());document.body.append(dialog);dialog.showModal();return dialog;
 }

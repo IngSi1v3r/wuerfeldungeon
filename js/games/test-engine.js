@@ -33,17 +33,25 @@ export class TestGame {
  if(r.type==='goldSack')this.state.goldPoints+=2;if(r.type==='goldCoin')this.state.goldPoints++;
  if(r.type==='chest'&&this.availablePowers().length)this.state.pendingChests.push(id);
  if(r.type==='trap'){if(this.traps.has(id)&&this.traps.get(id)<this.round){if(r.trapKind==='life')this.state.lostLives+=r.trapCost;else this.state.diamonds-=r.trapCost;}else if(!this.traps.has(id))this.traps.set(id,this.round);}
+ for(const effect of this.definition.rules?.bossHits||[])if(String(effect.sourceCellId)===id){const boss=this.room(effect.targetCellId);if(boss?.type==='boss')this.hitEnemy(boss,effect.hits);}
  for(const n of this.portalPartners(id))this.reach(n);
+ }
+ hitEnemy(r,amount=1){
+ const id=String(r.id);if(this.reached(id))return false;
+ const hits=Math.min(r.hits,(this.state.monsterHits[id]||0)+amount);this.state.monsterHits[id]=hits;
+ if(hits<r.hits)return false;
+ this.reach(id);this.state.diamonds+=r.rewardFirst||0;this.state.firstKills.push(id);
+ this.state.enemyCompletionRounds={...this.state.enemyCompletionRounds,[id]:this.round};return true;
  }
  play(id,{cheat=false,middle=null,axe=false}={}){
  const r=this.room(id);if(!r)throw Error('Feld nicht gefunden.');
  if(this.reached(id))return {unchanged:true};
  if(!cheat){if(!this.actions(middle).some(a=>a.cellId===String(id)))throw Error('Dieses Feld ist mit dem aktuellen Wurf nicht erreichbar.');if(middle!=null&&this.state.torchUses<1)throw Error('Keine Fackel mehr verfügbar.');if(axe&&(!ENEMY_TYPES.has(r.type)||this.state.axeUses<1))throw Error('Die Axt des Doppelschlags benötigt einen Gegner und eine freie Verwendung.');}
+ const killsBefore=this.state.firstKills.length;
  if(middle!=null){this.reach(middle);this.state.torchUses--;}
- let defeated=false;
- if(ENEMY_TYPES.has(r.type)){const hits=Math.min(r.hits,(this.state.monsterHits[id]||0)+(axe?2:1));this.state.monsterHits[id]=hits;
-  if(axe)this.state.axeUses--;if(hits>=r.hits){this.reach(id);this.state.diamonds+=r.rewardFirst||0;this.state.firstKills.push(String(id));defeated=true;}
- }else this.reach(id);
+ if(ENEMY_TYPES.has(r.type)){this.hitEnemy(r,axe?2:1);if(axe)this.state.axeUses--;}
+ else this.reach(id);
+ const defeated=this.state.firstKills.length>killsBefore;
  this.awardTasks();this.eliminated=this.state.lostLives>=11+this.state.extraLives;
  if(!cheat){this.phase='waiting_roll';this.finished=this.rooms.filter(r=>['monster','boss','miniboss'].includes(r.type)).every(r=>this.reached(r.id));}
  return {defeated,cheat};

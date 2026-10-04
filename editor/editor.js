@@ -1,4 +1,4 @@
-import {FORMAT as NEW_FORMAT,TYPES,newRules,compileDocument,upgradeDocument,goalText,canHaveFieldFlags} from '../js/maps/features.js';
+import {FORMAT as NEW_FORMAT,TYPES,newRules,compileDocument,upgradeDocument,goalText,canHaveFieldFlags,isHitRune} from '../js/maps/features.js';
 import {printScorePlan,scoreTrackRows,paintPrintScore,paintPrintStatus} from './print-tracks.js';
 import {fieldSymbolArt} from '../js/maps/field-symbols.js';
 
@@ -230,9 +230,10 @@ import {fieldSymbolArt} from '../js/maps/field-symbols.js';
       const rowsFor=size=>{const rows=[[]];let width=0;for(const n of r.requirements){const add=requirementWidth(n,size)+(rows.at(-1).length?textWidth(' / ',size):0);if(width+add>w-20&&rows.at(-1).length){rows.push([]);width=0;}rows.at(-1).push(n);width+=requirementWidth(n,size)+(rows.at(-1).length>1?textWidth(' / ',size):0);}return rows;};
       let size=16,rows=rowsFor(size);while(rows.length*(size+4)>h-56&&size>6){size--;rows=rowsFor(size);}rows.forEach((row,i)=>{let ax=left+10;row.forEach((n,j)=>{if(j){text('/',ax,top+58+i*(size+4),size,'#697786','start');ax+=textWidth(' / ',size);}requirement(n,ax,top+58+i*(size+4),size,'#653d74','start');ax+=requirementWidth(n,size);});});if(!r.requirements.length)text('?',x,top+h*.76,25,'#895398');return art;}
 
-    if(['special','rune'].includes(r.type))art.push(...fieldSymbolArt('rune',x,r.number!==null?top+31:y,38));
+    if(['special','rune'].includes(r.type))art.push(...fieldSymbolArt('rune',x,isHitRune(r)?top+26:r.number!==null?top+31:y,isHitRune(r)?31:38));
     if(r.type==='doubleSum')art.push(...fieldSymbolArt('doubleSum',x,top+31,74,r.number==null?3:r.number/2));
-    if(r.number!==null)requirement(r.number,x,r.crazyValue?top+h*.77:['special','rune','doubleSum'].includes(r.type)?top+h*.76:y,r.crazyValue?30:22);
+    if(r.number!==null)requirement(r.number,x,isHitRune(r)?top+h*.59:r.crazyValue?top+h*.77:['special','rune','doubleSum'].includes(r.type)?top+h*.76:y,r.crazyValue?30:22);
+    if(isHitRune(r))art.push({tag:'text',attrs:{x,y:top+h-13,'text-anchor':'middle','font-size':11,'font-weight':600,fill:'#65488d','data-rune-hits':r.runeHits??3},text:`${r.runeHits??3} Treffer`});
     return art;
   }
   function currentImageLayout(r){
@@ -529,6 +530,7 @@ import {fieldSymbolArt} from '../js/maps/field-symbols.js';
     document.getElementById('menuTitle').textContent=TYPE_NAMES[current.type]+' bearbeiten';
     document.getElementById('fieldTypeLabel').hidden=!['normal','doubleSum','rune','crazy','trap','portal'].includes(current.type);
     document.getElementById('fieldType').value=current.type;
+    refreshRuneForm(current);
     document.getElementById('startField').checked=!!current.start;
     document.getElementById('dimmedFieldLabel').hidden=!canHaveFieldFlags(current);
     document.getElementById('dimmedField').checked=!!current.dimmed;
@@ -544,6 +546,13 @@ import {fieldSymbolArt} from '../js/maps/field-symbols.js';
     document.getElementById('removeEnemyImage').disabled=!current[imageKey(current)];
     refreshNumberButtons(current);menu.hidden=false;menu.scrollTop=0;
     positionMenu(x,y);
+  }
+  function refreshRuneForm(r){
+    document.getElementById('runeForm').hidden=r.type!=='rune';
+    document.getElementById('runeEffect').value=r.runeEffect??'unlock';
+    document.getElementById('runeHits').value=r.runeHits??3;
+    document.getElementById('runeHitsLabel').hidden=!isHitRune(r);
+    document.getElementById('runeHint').textContent=isHitRune(r)?'Einmal beim Erreichen: Treffer auf deinen Boss. Die Würfelzahl gilt zum Betreten. Bei mehreren Bossen trifft die Rune jeden.':'Schaltet die Würfelzahl dieses Feldes beim Boss frei.';
   }
   function positionMenu(x=parseFloat(menu.style.left)||8,y=parseFloat(menu.style.top)||8){if(menu.hidden)return;menu.style.left=`${Math.max(8,Math.min(x,window.innerWidth-menu.offsetWidth-8))}px`;menu.style.top=`${Math.max(8,Math.min(y,window.innerHeight-menu.offsetHeight-8))}px`;}
   function closeMenu(){menu.hidden=true;menuRoomId=null;}
@@ -565,9 +574,11 @@ import {fieldSymbolArt} from '../js/maps/field-symbols.js';
     const r=rooms.find(r=>r.id===menuRoomId),type=e.target.value;
     if(!r||readOnly||!['normal','doubleSum','rune','crazy','trap','portal'].includes(r.type)||!['normal','doubleSum','rune','crazy','trap','portal'].includes(type))return;
     const before=snapshot(),next=normalizeRoom({...r,type,number:type==='crazy'||type==='doubleSum'&&(r.number==='doubles'||r.number%2!==0)?null:r.number,requirements:r.requirements??(r.number==null?[]:[r.number])});
-    Object.assign(r,next);if(type!=='crazy')delete r.requirements;if(type!=='trap'){delete r.trapKind;delete r.trapCost;}
+    Object.assign(r,next);if(type!=='crazy')delete r.requirements;if(type!=='trap'){delete r.trapKind;delete r.trapCost;}if(type!=='rune'){delete r.runeEffect;delete r.runeHits;}
     saveState(before);openMenu(parseFloat(menu.style.left)||8,parseFloat(menu.style.top)||8,r.id);
   };
+  document.getElementById('runeEffect').onchange=e=>{const r=rooms.find(r=>r.id===menuRoomId);if(!r||r.type!=='rune'||!['unlock','hits'].includes(e.target.value))return;const before=snapshot();r.runeEffect=e.target.value;r.runeHits??=3;saveState(before);refreshRuneForm(r);positionMenu();};
+  document.getElementById('runeHits').onchange=e=>{const r=rooms.find(r=>r.id===menuRoomId);if(!r||r.type!=='rune')return;const value=Number(e.target.value);if(!e.target.value||!Number.isInteger(value)||value<1||value>100){e.target.value=r.runeHits??3;toast('Bitte 1 bis 100 ganze Bosstreffer eingeben.');return;}const before=snapshot();r.runeHits=value;saveState(before);};
   document.getElementById('startField').onchange=e=>{const r=rooms.find(r=>r.id===menuRoomId);if(!r||!canHaveFieldFlags(r))return;const before=snapshot();r.start=e.target.checked;saveState(before);};
   document.getElementById('dimmedField').onchange=e=>{const r=rooms.find(r=>r.id===menuRoomId);if(!r||!canHaveFieldFlags(r))return;const before=snapshot();r.dimmed=e.target.checked;saveState(before);};
   for(const [input,key] of [['enemyName','name'],['enemyHits','hits'],['rewardFirst','rewardFirst'],['rewardLater','rewardLater']]){
@@ -719,6 +730,7 @@ import {fieldSymbolArt} from '../js/maps/field-symbols.js';
     if(isEnemy(r)){normalized.defeatedImage=r.defeatedImage?validateImage(r.defeatedImage):null;normalized.defeatedImageLayout=r.defeatedImageLayout?{...r.defeatedImageLayout}:null;}
     if(r.type==='trap')Object.assign(normalized,{trapKind:r.trapKind??'diamonds',trapCost:r.trapCost??1});
     if(r.type==='crazy')normalized.requirements=[...(r.requirements || [])];
+    if(r.type==='rune')Object.assign(normalized,{runeEffect:r.runeEffect??'unlock',runeHits:r.runeHits??3});
     return normalized;
   }
   function validateProject(data){
@@ -727,6 +739,7 @@ import {fieldSymbolArt} from '../js/maps/field-symbols.js';
     for(const raw of data.rooms){
       if(!raw||!Number.isSafeInteger(raw.id)||raw.id<1||raw.id>=Number.MAX_SAFE_INTEGER||ids.has(raw.id)||!Object.hasOwn(DIM,raw.type)||!Number.isSafeInteger(raw.x)||!Number.isSafeInteger(raw.y)||Math.abs(raw.x)>2000||Math.abs(raw.y)>2000||!(raw.number==null||validNumber(raw.number)))throw Error('Ungültiges Feld');
       if(raw.type==='doubleSum'&&raw.number!=null&&(!Number.isInteger(raw.number)||raw.number%2!==0))throw Error('Bestimmter Pasch: nur die Summen 2, 4, 6, 8, 10 oder 12 sind erlaubt');
+      if(raw.type==='rune'&&(raw.runeEffect!==undefined&&!['unlock','hits'].includes(raw.runeEffect)||raw.runeHits!==undefined&&(!Number.isInteger(raw.runeHits)||raw.runeHits<1||raw.runeHits>100)))throw Error('Runenwirkung: Freischaltung oder 1 bis 100 ganze Bosstreffer');
       if(raw.type==='trap'&&(!['diamonds','life'].includes(raw.trapKind??'diamonds')||!Number.isInteger(raw.trapCost??1)||(raw.trapCost??1)<1||(raw.trapCost??1)>99))throw Error('Ungültige Fallenkosten');
       if(raw.type==='crazy'&&(!Array.isArray(raw.requirements??[])||(raw.requirements??[]).length>12||!(raw.requirements??[]).every(validNumber)||new Set(raw.requirements).size!==(raw.requirements??[]).length))throw Error('Ungültige Zufallszahlen');
       if(isEnemy(raw)){
