@@ -27,7 +27,7 @@ export function gameView(ctx) {
  const rotateHint=h('div',{class:'rotate-hint'},h('span',{},'↻ Mehr Platz im Querformat'),h('button',{type:'button','aria-label':'Querformat-Hinweis schließen',onclick:()=>{rotateHint.hidden=true;}},icon('close')));
  const playInstalled=status?.playSchemaVersion===CONFIG.playSchemaVersion;
  const rulesInstalled=status?.rulesSchemaVersion===CONFIG.rulesSchemaVersion;
- const panel=turnPanel({profile,onHorn:()=>command('use_game_horn',{p_game_id:gameId,p_state_revision:game.turn.ownRevision},async()=>{audio.effect('horn');await watch.refresh();}),onTorch:rulesInstalled?toggleTorch:null,onAxe:rulesInstalled?()=>{axeMode=!axeMode;torchMode=false;middleCellId=null;render();}:null,onChoosePowerup:rulesInstalled?()=>openPowerup(true):null,onRoll:()=>command('roll_game_dice',{p_game_id:gameId,p_round:game.round}),onLoseLife:()=>{
+ const panel=turnPanel({profile,onWaitStatus:updateWaitIndicators,onHorn:()=>command('use_game_horn',{p_game_id:gameId,p_state_revision:game.turn.ownRevision},async()=>{audio.effect('horn');await watch.refresh();}),onTorch:rulesInstalled?toggleTorch:null,onAxe:rulesInstalled?()=>{axeMode=!axeMode;torchMode=false;middleCellId=null;render();}:null,onChoosePowerup:rulesInstalled?()=>openPowerup(true):null,onRoll:()=>command('roll_game_dice',{p_game_id:gameId,p_round:game.round}),onLoseLife:()=>{
   if(confirm('Ein Leben verlieren und diesen Zug beenden? Deine Powerup-Verwendungen bleiben erhalten.'))playTurn(null,'lose_life');
  },onResolveWait:(id,action)=>{
   if(confirm(action==='remove'?'Diesen Spieler aus dem laufenden Spiel entfernen?':gameWaitKind(game)==='roll'?'Diesen Wurf an den nächsten aktiven Spieler weitergeben? Der Spieler bleibt im Spiel und kann danach seinen Zug machen.':'Diesen offenen Zug ohne Lebensabzug überspringen? Eine noch offene Powerup-Auswahl verfällt dabei.'))command('resolve_game_wait',{p_game_id:gameId,p_round:game.round,p_target_player_id:id,p_action:action});
@@ -121,8 +121,9 @@ export function gameView(ctx) {
    let row=roomRows.get(p.id);
    if(!row){
     const name=h('strong',{class:'opponent-name'}),score=h('span',{class:'opponent-score'}),picture=avatar(p,'small'),roller=h('span',{class:'roller-indicator',title:'Mit Würfeln dran','aria-label':'Mit Würfeln dran',hidden:true},icon('dice'));
-    const article=h('article',{class:'opponent-seat','data-player-id':p.id},h('div',{class:'opponent-pill'},picture,name,score,roller));
-    row={article,name,score,picture,roller,avatarKey:JSON.stringify([p.displayName,p.avatarPath]),mini:null};roomRows.set(p.id,row);
+    const wait=h('button',{type:'button',class:'player-wait-button',hidden:true,'data-wait-player':p.id,onclick:event=>panel.openWait(p.id,event.currentTarget)},icon('hourglass'));
+    const article=h('article',{class:'opponent-seat','data-player-id':p.id},h('div',{class:'opponent-pill'},picture,name,score,roller,wait));
+    row={article,name,score,picture,roller,wait,avatarKey:JSON.stringify([p.displayName,p.avatarPath]),mini:null};roomRows.set(p.id,row);
    }
    const avatarKey=JSON.stringify([p.displayName,p.avatarPath]);if(row.avatarKey!==avatarKey){const picture=avatar(p,'small');row.picture.replaceWith(picture);row.picture=picture;row.avatarKey=avatarKey;}
    renderSection(row.name,p.displayName,()=>p.displayName);row.name.title=p.displayName;
@@ -137,6 +138,14 @@ export function gameView(ctx) {
   }
   // Live-Aktualisierungen bewahren Vorschauen, Bilder und fokussierte Knöpfe.
   participants.forEach((p,i)=>{const row=roomRows.get(p.id).article;if(roomPlayers.children[i]!==row)roomPlayers.insertBefore(row,roomPlayers.children[i]||null);});
+ }
+ function updateWaitIndicators({playerIds,canManage,kind}){
+  const delayed=new Set(playerIds);
+  for(const [id,row] of roomRows){
+   row.wait.hidden=!delayed.has(id);row.wait.disabled=!canManage;
+   const player=game.participants.find(p=>p.id===id),label=canManage?`Warten auf ${player?.displayName} – Optionen`:`${player?.displayName} ${kind==='roll'?'hat noch nicht gewürfelt':'hat noch nicht fertig gespielt'}`;
+   row.wait.title=label;row.wait.setAttribute('aria-label',label);
+  }
  }
  async function invite() {
   try {await navigator.clipboard.writeText(location.href);toast('Einladungslink kopiert.');}catch{prompt('Diesen Link an deine Freunde weitergeben:',location.href);}

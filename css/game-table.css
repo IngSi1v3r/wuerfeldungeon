@@ -49,6 +49,14 @@
 .opponent-pill .opponent-score {font-size:13px;font-weight:650;color:#e5cf95;margin-left:auto;}
 .opponent-pill .roller-indicator {display:flex;align-items:center;}
 .opponent-pill .roller-indicator .icon {width:15px;height:15px;}
+.player-wait-button {display:grid;place-items:center;flex:0 0 auto;width:25px;height:25px;padding:0;border:1px solid #d5bb6c55;border-radius:50%;color:#eed290;background:#c4a64d16;font-size:13px;cursor:pointer;}
+.player-wait-button[hidden] {display:none;}
+.player-wait-button .icon {width:15px;height:15px;}
+.turn-hourglass .icon {width:12px;height:12px;vertical-align:-2px;margin-right:4px;}
+.player-wait-button:hover:not(:disabled),.player-wait-button:focus-visible {background:#d0b06030;border-color:#efd69a;outline:2px solid #e4c87888;outline-offset:2px;}
+.player-wait-button:disabled {opacity:.8;cursor:default;}
+.wait-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;}
+.wait-heading .icon {width:16px;height:16px;}
 .current-roller .opponent-pill {border-color:#c5b57999;box-shadow:0 0 16px #cfbf7030;}
 .opponent-seat.eliminated {opacity:.6;}
 .game-immersive .opponent-miniature {width:105px;height:55px;border:1px solid #b9c99b44;border-radius:0 0 9px 9px;background:#f4f3eb;padding:2px;margin-top:-1px;flex-shrink:0;}

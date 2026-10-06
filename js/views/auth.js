@@ -20,7 +20,7 @@ export function authView({api,status,onAuthenticated,initialMessage=''}) {
   const formArea=h('div',{},message,form);
   function draw() {
     const username=field('Spielername','username',{autocomplete:'username',maxlength:32,
-      autocapitalize:'none',spellcheck:'false',placeholder:'z. B. flo',hint:'Dein fester Name zum Anmelden.'});
+      autocapitalize:'none',spellcheck:'false',hint:'Dein fester Name zum Anmelden.'});
     const display=field('Anzeigename','display-name',{autocomplete:'nickname',maxlength:40,placeholder:'So sehen dich deine Freunde'});
     const password=field('Passwort','password',{type:'password',autocomplete:mode==='login' ? 'current-password' : 'new-password',
       hint:mode==='register' ? 'Mindestens 6 Zeichen. Das Passwort wird nur serverseitig gehasht gespeichert.' : ''});

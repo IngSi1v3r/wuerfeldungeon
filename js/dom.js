@@ -43,6 +43,7 @@ const PATHS={
   play:['m8 4 12 8-12 8V4Z'],
   menu:['M4 6h16M4 12h16M4 18h16'],
   heart:['M12 21S2 15 2 8a5 5 0 0 1 10-2 5 5 0 0 1 10 2c0 7-10 13-10 13Z'],
+  hourglass:['M6 3h12M6 21h12','M7 3v5l5 4-5 4v5M17 3v5l-5 4 5 4v5','M9 6h6M9 18h6'],
 };
 export function icon(name,className='') {
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');

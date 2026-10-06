@@ -1,6 +1,6 @@
 import {assetUrl} from '../maps/model.js';
 import {h,icon} from '../dom.js';
-import {sortRequirements,requirementLabel,lifePenalty,pointsSoFar,gameWaitKind,elapsedWaitSeconds,diceHints,roomLabel} from './rules.js';
+import {sortRequirements,requirementLabel,lifePenalty,pointsSoFar,gameWaitKind,pendingWaitPlayers,elapsedWaitSeconds,diceHints,roomLabel} from './rules.js';
 import {goalText} from '../maps/features.js';
 import {fieldSymbolNode} from '../maps/field-symbols.js';
 import {renderSection} from './render.js';
@@ -16,22 +16,42 @@ export function redDiceDialog(uses) {
  });
 }
 
-export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onTorch,onAxe,onHorn,onChoosePowerup}) {
- let current=null,offset=0,closed=false,waitUntil=0,lastWait=null,detail=null;
- const timer=h('span',{id:'turn-hourglass',class:'turn-hourglass',hidden:true}),wait=h('div',{class:'wait-management',id:'wait-management',hidden:true,'aria-label':'Ausstehende Spieler'});
+export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onWaitStatus,onTorch,onAxe,onHorn,onChoosePowerup}) {
+ let current=null,offset=0,closed=false,lastWait=null,detail=null,waitPlayerId=null,waitOpener=null;
+ const timerText=h('span'),timer=h('span',{id:'turn-hourglass',class:'turn-hourglass',hidden:true},icon('hourglass'),timerText),wait=h('div',{class:'wait-management',id:'wait-management',hidden:true,role:'dialog','aria-label':'Warteoptionen'});
  const title=h('div',{class:'turn-title'}),diceTray=h('div',{class:'dice-tray',id:'game-dice'}),options=h('div',{class:'dice-options'}),diceArea=h('div',{class:'dice-and-options',hidden:true},diceTray,options),buttons=h('div',{class:'turn-buttons'});
  const element=h('section',{class:'turn-panel','aria-label':'Würfel und Zug'},title,diceArea,buttons,timer);
  const prompt=h('div',{class:'turn-prompt'}),overlay=h('div',{class:'turn-overlay'},prompt,wait);
  const lives=h('aside',{class:'game-lives','aria-label':'Lebensanzeige'}),tasks=h('aside',{class:'game-tasks','aria-label':'Bonusaufgaben'});
  const total=h('strong',{id:'own-points'}),diamonds=h('span',{class:'score-diamonds'}),penalty=h('span',{class:'score-penalty'}),gold=h('span',{class:'score-gold'}),resources=h('div',{class:'score-resources'});
  const score=h('section',{class:'game-score','aria-label':'Deine Punkte und Powerups'},h('div',{class:'score-total'},total,h('span',{},'Punkte')),h('div',{class:'score-details'},diamonds,gold,penalty),resources);
+ function closeWait(restoreFocus=false){
+  waitPlayerId=null;wait.hidden=true;if(restoreFocus)waitOpener?.focus();waitOpener=null;
+ }
+ wait.addEventListener('keydown',event=>{if(event.key==='Escape'){event.stopPropagation();closeWait(true);}});
  function tick(){
   if(closed||!current)return;
-  const {game}=current,kind=gameWaitKind(game),waiting=kind!==null&&['playing','paused'].includes(game.status),seconds=elapsedWaitSeconds(game,Date.now(),offset);
+  const {game,busy}=current,kind=gameWaitKind(game),waiting=kind!==null&&['playing','paused'].includes(game.status),seconds=elapsedWaitSeconds(game,Date.now(),offset);
   timer.hidden=seconds<30||!waiting;
-  const text=`⌛ ${seconds} s`;if(timer.textContent!==text)timer.textContent=text;
+  const text=`${seconds} s`;if(timerText.textContent!==text)timerText.textContent=text;
   timer.title=game.status==='paused'?'Pausiert':kind==='roll'?'Warten auf den Wurf':'Warten auf die offenen Züge';
-  wait.hidden=game.status!=='playing'||!waiting||game.host.id!==profile.id||seconds<60||Date.now()<waitUntil;
+  const delayed=game.status==='playing'&&waiting&&seconds>=60,players=delayed?pendingWaitPlayers(game):[],host=game.host.id===profile.id;
+  onWaitStatus?.({playerIds:players.map(p=>p.id),canManage:delayed&&host&&!busy,kind});
+  const player=players.find(p=>p.id===waitPlayerId);
+  if(!player||!host){closeWait();return;}
+  const canTransfer=kind!=='roll'||game.participants.some(p=>p.active&&!p.eliminated&&p.id!==game.rollerId);
+  wait.hidden=false;wait.setAttribute('aria-label',`Warten auf ${player.displayName}`);
+  renderSection(wait,[game.id,game.round,kind,player.id,player.displayName,player.hasPendingPowerup,canTransfer,busy],()=>[
+   h('div',{class:'wait-heading'},h('strong',{},player.displayName),h('button',{type:'button',class:'text-button','aria-label':'Warteoptionen schließen',onclick:()=>closeWait(true)},icon('close'))),
+   h('p',{},kind==='roll'?'Der Wurf lässt auf sich warten.':player.hasPendingPowerup?'Die Powerup-Auswahl ist noch offen.':'Der Zug ist noch offen.'),
+   h('div',{class:'wait-player','data-player-id':player.id},h('div',{class:'button-row'},
+    canTransfer?h('button',{class:'button secondary',disabled:busy,onclick:()=>onResolveWait(player.id,'skip')},kind==='roll'?'Wurf weitergeben':'Zug überspringen'):null,
+    player.id!==profile.id?h('button',{class:'text-button',disabled:busy,onclick:()=>onResolveWait(player.id,'remove')},'Entfernen'):null)),
+   h('button',{class:'text-button',onclick:()=>closeWait(true)},'Weiter warten')]);
+ }
+ function openWait(playerId,opener=null){
+  if(closed||!current||current.busy||current.game.host.id!==profile.id||current.game.status!=='playing'||elapsedWaitSeconds(current.game,Date.now(),offset)<60||!pendingWaitPlayers(current.game).some(p=>p.id===playerId))return false;
+  waitPlayerId=playerId;waitOpener=opener;tick();wait.querySelector('button')?.focus();return true;
  }
  function goalFor(game,key){return game.definition?.rules.goals?.[key==='special'?0:1];}
  function taskTitle(goal,t,key){
@@ -64,7 +84,7 @@ export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onTorch,onAxe
  function update(game,busy=false,mode={}) {
   current={game,busy};offset=Date.parse(game.serverNow||new Date().toISOString())-Date.now();
   const waitingKind=gameWaitKind(game),waitKey=JSON.stringify([game.id,game.round,waitingKind,waitingKind==='roll'?game.rollerId:game.choiceStartedAt]);
-  if(waitKey!==lastWait){lastWait=waitKey;waitUntil=0;}
+  if(waitKey!==lastWait){lastWait=waitKey;closeWait();}
   const own=game.ownState||{},turn=game.turn||{},roller=game.participants.find(p=>p.id===game.rollerId),me=game.participants.find(p=>p.id===profile.id),ended=['finished','cancelled'].includes(game.status),sealed=game.phase==='round_complete';
   element.dataset.ownStatus=turn.canAct?'act':'wait';
   const text=mode.awaitingLoss?'Wurf wird ausgewertet …':ended?(game.status==='finished'?'Abgeschlossen':'Abgebrochen'):game.status==='paused'?'Pause':turn.pendingPowerup?'Truhe geöffnet':mode.torch?(mode.middleCellId?'Fackel · Zielfeld wählen':'Fackel · Zwischenraum wählen'):mode.axe?'Axt des Doppelschlags aktiv':sealed?'Schlusswertung':me?.eliminated?'Ausgeschieden':game.phase==='waiting_roll'?(game.rollerId===profile.id?'Dein Wurf':`${roller?.displayName||'Nächster Spieler'} würfelt`):turn.done?'Warten auf Mitspieler':'Du bist am Zug';
@@ -102,13 +122,8 @@ export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onTorch,onAxe
    const t=game.tasks[key];return h('button',{type:'button',class:`task-progress ${t.completed?'complete':''} ${t.blocked?'blocked':''}`,'data-task':key,'aria-label':`Bonusaufgabe ${key==='special'?1:2} ansehen`,onclick:()=>showTask(key)},...taskBody(game,key));
   }));
   if(detail)renderSection(detail.content,taskKey,()=>taskBody(game,detail.key,true));
-  const waitingPlayers=game.participants.filter(p=>p.active&&(waitingKind==='roll'?p.id===game.rollerId&&!p.eliminated:((!p.eliminated&&!p.turnDone)||p.hasPendingPowerup))),canTransfer=waitingKind!=='roll'||game.participants.some(p=>p.active&&!p.eliminated&&p.id!==game.rollerId);
-  renderSection(wait,[waitingKind,waitingPlayers.map(p=>[p.id,p.displayName,p.hasPendingPowerup]),canTransfer,busy],()=>[
-   h('p',{},waitingKind==='roll'?'Der Wurf lässt auf sich warten.':'Noch nicht alle haben gezogen.'),...waitingPlayers.map(p=>h('div',{class:'wait-player','data-player-id':p.id},h('strong',{},p.displayName+(p.hasPendingPowerup?' · Powerup offen':'')),h('div',{class:'button-row'},
-    canTransfer?h('button',{class:'button secondary',disabled:busy,onclick:()=>onResolveWait(p.id,'skip')},waitingKind==='roll'?'Wurf weitergeben':'Zug überspringen'):null,p.id!==profile.id?h('button',{class:'text-button',disabled:busy,onclick:()=>onResolveWait(p.id,'remove')},'Entfernen'):null))),
-   h('button',{class:'text-button',onclick:()=>{waitUntil=Date.now()+30000;tick();}},'Weiter warten')]);
   tick();
  }
  const clock=setInterval(tick,1000);
- return {element,overlay,lives,score,tasks,update,cleanup(){closed=true;clearInterval(clock);detail?.dialog.close();}};
+ return {element,overlay,lives,score,tasks,update,openWait,cleanup(){closed=true;clearInterval(clock);closeWait();detail?.dialog.close();}};
 }

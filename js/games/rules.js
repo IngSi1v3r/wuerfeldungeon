@@ -36,6 +36,10 @@ export function gameWaitKind(game) {
  if(game?.participants?.some(p=>p.active&&p.hasPendingPowerup)||game?.phase==='choosing')return 'turn';
  return game?.phase==='waiting_roll'&&game.rollWaitStartedAt?'roll':null;
 }
+export function pendingWaitPlayers(game){
+ const kind=gameWaitKind(game);if(!kind)return [];
+ return (game.participants||[]).filter(p=>p.active&&(kind==='roll'?p.id===game.rollerId&&!p.eliminated:((!p.eliminated&&!p.turnDone)||p.hasPendingPowerup)));
+}
 export function elapsedWaitSeconds(game,now=Date.now(),offset=0) {
  const kind=gameWaitKind(game),start=kind==='roll'?game.rollWaitStartedAt:kind==='turn'?game.choiceStartedAt:null;
  if(!start)return 0;
