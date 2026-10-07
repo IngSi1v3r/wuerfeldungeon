@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#59483d"/><stop offset=".65" stop-color="#445b44"/><stop offset="1" stop-color="#243b2c"/></linearGradient>
+    <radialGradient id="moon"><stop stop-color="#ffe3a3" stop-opacity=".45"/><stop offset=".25" stop-color="#efc790" stop-opacity=".12"/><stop offset="1" stop-color="#d5b893" stop-opacity="0"/></radialGradient>
+    <linearGradient id="path" x2="0" y2="1"><stop stop-color="#7aa18b" stop-opacity=".08"/><stop offset="1" stop-color="#75a295" stop-opacity=".26"/></linearGradient>
+    <g id="pine"><path d="M0 0 40 70H25l35 65H40l38 70H-78l38-70h-20l35-65h-15Z"/><path d="M-7 180H7v85H-7Z"/></g>
+    <g id="branch"><path d="M0 0c-20 100-9 217 9 351l-23 181H4l-4-182C25 204 38 88 16 0Z"/><path d="m4 130-64-55-45-8 74 36 34 65Zm8 75 76-97 51-13-69 37-49 109Zm-4 108-95-68-42 7 73 9 63 90Z"/></g>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#sky)"/>
+  <ellipse cx="760" cy="255" rx="500" ry="490" fill="url(#moon)"/>
+  <circle cx="680" cy="215" r="50" fill="#f8d98a" opacity=".18"/>
+  <g fill="#518074" opacity=".22">
+    <use href="#pine" transform="translate(120 255) scale(2.2)"/><use href="#pine" transform="translate(320 280) scale(1.7)"/><use href="#pine" transform="translate(470 360) scale(1.5)"/><use href="#pine" transform="translate(1020 290) scale(1.8)"/><use href="#pine" transform="translate(1250 235) scale(2.3)"/><use href="#pine" transform="translate(1480 245) scale(2.6)"/>
+  </g>
+  <path d="M0 660q240-180 520-30t470-45 610 70v345H0Z" fill="#173d32" opacity=".55"/>
+  <path d="M0 815q190-150 465-60t440-23 695 10v258H0Z" fill="#102e26"/>
+  <path d="M840 610c-200 142 210 168 10 253S590 920 570 1000h500c-37-126-308-147-181-235s-61-106-49-155" fill="url(#path)"/>
+  <g fill="#0a211c" opacity=".65">
+    <use href="#branch" transform="translate(65 110) scale(2)"/><use href="#branch" transform="translate(1430 -40) scale(2.4)"/><use href="#branch" transform="translate(1510 180) scale(-1.5 1.5)"/>
+    <use href="#pine" transform="translate(235 310) scale(2.7)"/><use href="#pine" transform="translate(1290 340) scale(2.7)"/>
+  </g>
+  <g fill="#072019">
+    <path d="M0 0h58q-18 280 40 571l-32 429H0Z"/><path d="M1540 0h60v1000h-106l38-329q-10-390 8-671Z"/>
+    <path d="M0 954q125-38 188 4l90-27 91 69H0Zm1600-62q-90 0-158 55l-72-30-75 83h305Z"/>
+    <path d="m97 966-15-56 37 42 1-73 21 71 43-32-26 56Zm1330 12 14-74 10 56 46-64-26 79Z"/>
+  </g>
+  <g fill="#a9d790" opacity=".48"><circle cx="220" cy="750" r="2"/><circle cx="435" cy="653" r="2.5"/><circle cx="692" cy="821" r="2"/><circle cx="1030" cy="713" r="2.5"/><circle cx="1244" cy="827" r="2"/><circle cx="375" cy="450" r="1.5"/><circle cx="1120" cy="435" r="1.5"/></g>
+</svg>

@@ -1,0 +1,19 @@
+.experimental-badge{display:inline-block;color:var(--gold);border:1px solid #dec48c48;border-radius:6px;padding:3px 7px;font-size:10px;letter-spacing:.25px}
+.experimental-options{border-color:#dec48c55!important}.experimental-options .muted{font-size:12px;margin:8px 0 0}
+.opponent-seat.is-ai .opponent-name::after{content:" · experimentell";font-size:9px;color:var(--gold);font-weight:400}
+.highscore-panel{border-top:1px solid var(--line);padding-top:20px;margin-top:24px}.highscore-panel h2{font-family:Georgia,serif;font-size:24px;margin:0}
+.highscore-panel .game-title-row>span{font-size:12px;color:var(--muted)}
+.highscore-filters{display:flex;gap:10px;margin:16px 0;flex-wrap:wrap}.highscore-filters select{flex:1;min-width:165px}
+.highscore-filters select,.highscores-view select,.ai-lab-view select{background:#15372b;border:1px solid #88a89355;border-radius:10px;color:var(--ink);min-height:42px;padding:9px 12px;font-size:12px}
+.highscore-list{display:grid;gap:8px}.highscore-row{border:1px solid var(--line);background:#102d2380;border-radius:12px;overflow:hidden}.highscore-row>summary{cursor:pointer;display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;padding:13px 16px;list-style:none}.highscore-row>summary::-webkit-details-marker{display:none}
+.highscore-row strong{font-size:14px;overflow-wrap:anywhere}.highscore-rank{font-size:12px;color:var(--muted)}.highscore-value{font-size:23px;font-family:Georgia,serif;font-variant-numeric:tabular-nums;color:var(--gold)}
+.highscore-row.mine{border-color:#9dc58980}.highscore-row.current{background:#2e49317a;box-shadow:inset 3px 0 #dec48c}
+.highscore-details{display:flex;gap:14px;flex-wrap:wrap;padding:0 16px 14px 76px;font-size:12px;color:var(--muted)}.highscore-details small{width:100%}
+.personal-rank{font-size:13px;color:var(--gold);padding:10px 14px;background:#dec48c0d;border:1px solid #dec48c30;border-radius:10px}
+.highscore-pagination{justify-content:space-between}.highscore-pagination button{font-size:12px;min-height:38px}.rating-explanation{font-size:12px;color:var(--muted);margin-top:22px}.rating-explanation summary{cursor:pointer}.rating-explanation p{margin:10px 0}
+.result-adventure-rating{display:block;font-size:11px;color:var(--gold);margin-top:5px}.result-dialog{width:min(860px,calc(100vw - 28px))}
+.ai-lab-stage{height:min(65dvh,750px);min-height:320px;border:1px solid var(--line);border-radius:18px;overflow:hidden;margin:20px 0;background:#10261e}.ai-lab-stage .game-board-wrap{height:100%;display:flex;flex-direction:column;margin:0;border:0}.ai-lab-stage .game-board-stage{flex:1;min-height:0;height:100%}
+.ai-lab-scores{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:24px}.ai-series-results{display:grid;gap:12px}.ai-series-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:20px}.ai-series-row>span{font-size:12px;color:var(--muted)}.ai-run-players{width:100%;display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mint)}
+.ai-lab-history{display:grid;gap:12px;margin-top:30px}.ai-lab-history h2{font-family:Georgia,serif;font-size:24px}.ai-history-row{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:20px}.ai-history-row small{display:block;margin-top:5px}.ai-history-row .button{white-space:nowrap;font-size:12px}
+.replay-dialog:fullscreen{width:100vw;max-height:100dvh;border-radius:0}.replay-dialog .replay-controls #replay-fullscreen{margin-left:auto}
+@media(max-width:600px){.highscore-row>summary{grid-template-columns:34px 1fr auto;padding:12px;gap:8px}.highscore-details{padding-left:54px}.ai-history-row{flex-direction:column;align-items:flex-start}.ai-lab-stage{height:55dvh}.highscore-filters select{width:100%}.ai-run-players{flex-direction:column}}
