@@ -1,0 +1,39 @@
+{
+  "name": "wuerfeldungeon",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Würfeldungeon – Multiplayer-Webapp mit Karteneditor",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test --test-concurrency=1 tests/unit.test.mjs tests/database.test.mjs tests/upload.test.mjs tests/maps.test.mjs tests/map-upload.test.mjs tests/games.test.mjs tests/games-client.test.mjs tests/turns.test.mjs tests/rules.test.mjs tests/classic-game.test.mjs tests/stability.test.mjs tests/editor-upgrade.test.mjs tests/game-upgrade.test.mjs tests/shop.test.mjs tests/round-two.test.mjs tests/round-two-db.test.mjs tests/polish.test.mjs tests/polish-db.test.mjs tests/original-map-rules.test.mjs tests/release.test.mjs tests/rune-hits.test.mjs tests/playtest-polish.test.mjs tests/solo-ai.test.mjs",
+    "test:maps-browser": "node tests/maps-browser.test.mjs",
+    "test:browser": "node tests/browser.test.mjs",
+    "check": "node scripts/check.mjs && tsc -p tests/tsconfig.json",
+    "test:games-browser": "node tests/games-browser.test.mjs",
+    "test:turns-browser": "node tests/turns-browser.test.mjs",
+    "test:classic-browser": "node tests/classic-game-browser.test.mjs",
+    "test:release-game-browser": "node tests/classic-game-browser.test.mjs --release",
+    "test:stability-browser": "node tests/stability-browser.test.mjs",
+    "test:editor-browser": "node tests/editor-upgrade-browser.test.mjs",
+    "test:rules-browser": "node tests/game-upgrade-browser.test.mjs",
+    "test:table-browser": "node tests/table-browser.test.mjs",
+    "test:shop-browser": "node tests/shop-browser.test.mjs",
+    "test:shop-classic-browser": "node tests/classic-game-browser.test.mjs --shop",
+    "test:round-two-browser": "node tests/round-two-browser.test.mjs --editor-only && node tests/round-two-browser.test.mjs --online-only",
+    "test:polish-browser": "node tests/polish-browser.test.mjs",
+    "test:original-rules-browser": "node tests/original-map-rules-browser.test.mjs",
+    "test:release-browser": "node tests/release-browser.test.mjs",
+    "test:rune-hits-browser": "node tests/rune-hits-browser.test.mjs",
+    "test:playtest-browser": "node tests/playtest-polish-browser.test.mjs",
+    "test:solo-ai-browser": "node tests/solo-ai-browser.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "playwright": "1.56.1",
+    "typescript": "5.9.3"
+  }
+}

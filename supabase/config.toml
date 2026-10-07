@@ -1,0 +1,9 @@
+project_id = "uqbpjsgffxoibvibfvgg"
+
+[functions.avatar-upload]
+# Unsere Spieler verwenden eigene Sitzungsschlüssel, keine Supabase-Auth-JWTs.
+# Die Function prüft den Sitzungsschlüssel selbst, bevor sie Dateien schreibt.
+verify_jwt = false
+
+[functions.map-asset-upload]
+verify_jwt = false

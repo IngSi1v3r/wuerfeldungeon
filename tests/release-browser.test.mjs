@@ -1,0 +1,116 @@
+// Browserabläufe gegen eine isolierte SQL-Datenbank; keine Live-Zugriffe.
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {mkdir,readFile,writeFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import {randomUUID} from 'node:crypto';
+import {createShopDatabase} from './helpers/shop.mjs';
+import {register,userRpc,publishFixture} from './helpers/games.mjs';
+import {callRpc} from './helpers/database.mjs';
+import {releaseFixture} from './helpers/release.mjs';
+import {CONFIG} from '../web/js/config.js';
+import {browserOptions} from './helpers/browser.mjs';
+
+const root=fileURLToPath(new URL('../',import.meta.url)),url='http://localhost:5213',out=root+'test-artifacts/1_0_0';
+const server=spawn(process.execPath,['scripts/serve.mjs'],{cwd:root,env:{...process.env,PORT:'5213'},stdio:'ignore'});
+let browser,db,page,queue=Promise.resolve(),checks=0;const errors=[],requests=[];
+const serial=fn=>{const job=queue.then(fn);queue=job.catch(()=>{});return job;};
+const check=(value,label)=>{assert.ok(value,label);checks++;console.log('PASS',label);};
+try{
+ db=await createShopDatabase();
+ for(const name of ['020_round_two.sql','022_print_and_cosmetics.sql','024_original_map_rules.sql','026_release_1_0_0.sql','028_free_starters_and_rune_hits.sql','030_playtest_polish.sql'])await db.exec(await readFile(root+'supabase/migrations/'+name,'utf8'));
+ const a=await register(db,'ReleaseBrowser'),b=await register(db,'ReleaseGast');
+ const maps=[];for(let i=0;i<18;i++)maps.push(await publishFixture(db,b,'Testwelt '+String(i+1).padStart(2,'0'),releaseFixture('doubleSum')));
+ const lobby=await userRpc(db,b,'create_game',{p_map_version_id:maps[0].versionId,p_name:'Nebelrunde',p_settings:{maxPlayers:8,cards:'hidden',hints:true,diceHints:true,fieldHints:true,fog:true},p_password:'',p_request_id:randomUUID()});
+ for(let i=0;i<100;i++){try{if((await fetch(url)).ok)break;}catch{}await new Promise(r=>setTimeout(r,30));}
+ await mkdir(out,{recursive:true});browser=await chromium.launch(browserOptions());
+ const context=await browser.newContext({viewport:{width:1366,height:900},acceptDownloads:true});
+ await context.route(CONFIG.supabaseUrl+'/**',async route=>{
+  const request=route.request(),path=new URL(request.url()).pathname;
+  if(!path.startsWith('/rest/v1/rpc/'))return route.abort();
+  try{
+   const name=path.split('/').at(-1),params=request.postDataJSON()||{};
+   let result=await serial(()=>callRpc(db,name,params));
+   if(name==='app_status')result={...result,realtimeAvailable:false};
+   requests.push({name,ok:result.ok,error:result.error});
+   await route.fulfill({contentType:'application/json',body:JSON.stringify(result)});
+  }catch(error){await route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({message:error.message})});}
+ });
+ page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(url);await page.locator('#register-tab').click();
+ check(await page.locator('#access-code').count()===0,'Registrierungsformular verlangt keinen Zugangscode');
+ await page.locator('#username').fill('neuimlager');await page.locator('#display-name').fill('Neu im Lager');await page.locator('#password').fill('Passwort123');await page.locator('#password-confirm').fill('Passwort123');
+ await page.locator('#auth-submit').click();await page.locator('.home-view').waitFor();
+ check(await page.locator('#version-label').textContent()===CONFIG.version,'Anmeldung und sichtbare Releaseversion '+CONFIG.version);
+ await page.evaluate(({key,user})=>localStorage.setItem(key,JSON.stringify(user.session)),{key:CONFIG.sessionStorageKey,user:a});
+ await page.reload();await page.locator('.home-view').waitFor();
+ await page.goto(url+'/#/new-game');await page.locator('#game-map-selection button').last().waitFor();
+ await page.locator('#game-map-selection button').last().click();
+ check(await page.locator('#choose-game-map').isHidden()&&await page.locator('#create-game-form').isVisible(),'Klick auf Karte wechselt direkt zu den Einstellungen');
+ check((await page.evaluate(()=>window.scrollY))===0,'Einstellungen beginnen ohne Scrollen am oberen Rand');
+ const cardBox=await page.locator('#game-cards').boundingBox();
+ check(cardBox.width<=20&&cardBox.height<=20,'Gegnerkarten-Checkbox hat normale Größe');
+ check(await page.locator('.game-rule-options #game-cards').count()===1,'Gegnerkarten stehen gemeinsam mit den übrigen Sichteinstellungen');
+ await page.locator('#game-cards').uncheck();await page.locator('#game-fog').check();
+ await page.locator('#game-powerups-horn').check();await page.locator('#game-powerups-axe').check();
+ await page.locator('#choose-another-map').click();check(await page.locator('#create-game-form').isHidden(),'Andere Karte wählen führt zur Kartenliste zurück');
+ await page.locator('#game-map-selection .selected').click();
+ check(!await page.locator('#game-cards').isChecked()&&await page.locator('#game-powerups-horn').isChecked(),'Zurück und vorwärts bewahrt dieselben Spieleinstellungen');
+ await page.screenshot({path:out+'/Spieleinstellungen.png'});
+ await page.locator('#create-game').click();await page.locator('#start-game').waitFor();
+ const created=new URLSearchParams(page.url().split('?')[1]).get('id'),g=(await userRpc(db,a,'get_game',{p_game_id:created})).game;
+ check(g.settings.cards==='hidden'&&g.settings.fog,'Sichteinstellungen werden korrekt in der Partie gespeichert');
+ check(g.powerupPool.includes('horn')&&g.powerupPool.includes('axe'),'Neue Artefaktnamen erhalten ihre bisherigen Powerup-IDs');
+ await page.goto(url+'/#/play');const card=page.locator(`[data-game-id="${lobby.gameId}"]`);
+ await card.locator('.fog-preview').waitFor();
+ check(await card.locator('.game-card-map .fog-preview').count()===1,'Nebel-Warteraum zeigt schon in der Liste eine Nebelvorschau');
+ await card.locator('.fog-preview img').waitFor();
+ const source=await card.locator('.fog-preview img').getAttribute('src');
+ check(source.startsWith('data:image/svg+xml;base64,'),'Nebelvorschau wird aus dem tatsächlichen Spielplan gerendert');
+ const fogHidden=await page.evaluate(src=>{const svg=new DOMParser().parseFromString(atob(src.split(',')[1]),'image/svg+xml');return svg.querySelector('.game-fog')&&svg.querySelector('.room[data-id="4"]')?.getAttribute('visibility')==='hidden';},source);
+ check(fogHidden,'Die entfernten Felder bleiben in der ersten Nebelvorschau verborgen');
+ await page.screenshot({path:out+'/Warteraumliste.png'});
+ await page.setViewportSize({width:390,height:844});await page.goto(url+'/#/editor');await page.locator('#mobile-editor-notice').waitFor();
+ check(await page.locator('#mobile-editor-notice').isVisible(),'Kartenwerkstatt zeigt auf dem Handy den PC-Hinweis');
+ await page.screenshot({path:out+'/Kartenwerkstatt_Handy.png'});
+ await page.setViewportSize({width:1366,height:900});
+ await page.goto(url+'/editor/');await page.waitForFunction(()=>window.DungeonEditor);
+ const doc=releaseFixture('doubleSum');
+ doc.rooms.push({id:5,type:'crazy',x:0,y:4,w:4,h:4,number:null,start:false,dimmed:false,requirements:[3,7,9]});
+ doc.rooms.push({id:6,type:'portal',x:0,y:8,w:4,h:4,number:11,start:false,dimmed:false});
+ doc.rooms.push({id:7,type:'portal',x:4,y:8,w:4,h:4,number:11,start:false,dimmed:false});
+ await page.evaluate(async d=>{await window.DungeonEditor.load(d);window.DungeonEditor.setReadOnly(false);},doc);
+ await page.locator('.room[data-id="1"]').click({button:'right'});
+ check(await page.locator('#startField').isChecked()&&await page.locator('#dimmedField').isChecked(),'Sonderfeld behält Start- und Angriffsfeld gleichzeitig');
+ await page.locator('#fieldType').selectOption('trap');
+ check(await page.locator('#startField').isChecked()&&await page.locator('#dimmedField').isChecked(),'Feldartwechsel bewahrt beide Eigenschaften');
+ await page.locator('#startField').uncheck();
+ check(await page.locator('#dimmedField').isChecked(),'Häkchen lassen sich unabhängig bearbeiten');
+ await page.keyboard.press('Escape');await page.locator('.room[data-id="2"]').click({button:'right'});
+ check(await page.locator('#startField').isHidden()&&await page.locator('#dimmedField').isHidden(),'Monster zeigen keine Start- oder Angriffsfeld-Häkchen');
+ await page.keyboard.press('Escape');
+ check(await page.locator('[data-portal-icon]').count()>12,'Portale besitzen eine deutliche Strudelgrafik');
+ check(await page.locator('[data-crazy-icon]').count()>8,'Verrücktes Feld besitzt einen gut lesbaren Würfel');
+ await page.evaluate(async()=>{window.__preview=(await window.DungeonEditor.exportPreview()).src;});
+ await writeFile(out+'/Feldgrafiken.png',Buffer.from((await page.evaluate(()=>window.__preview)).split(',')[1],'base64'));
+ await page.locator('#openLayout').click();await page.locator('#layoutPNG').click();await page.locator('#pngPreview').waitFor();
+ await writeFile(out+'/Drucklayout.png',Buffer.from((await page.locator('#pngPreview').getAttribute('src')).split(',')[1],'base64'));
+ check(await page.locator('#pngPreview').isVisible(),'Drucklayout wird weiterhin erfolgreich exportiert');
+ await page.goto(url+'/');await page.locator('.home-view').waitFor();
+ const durations=await page.evaluate(async()=>{
+  const {dicePresentation}=await import('/js/games/dice-presentation.js');const results=[];
+  for(const mode of ['short','normal','long']){
+   const view=dicePresentation({getPreferences:()=>({diceAnimation:mode})});document.body.append(view.element);
+   const base={status:'playing',phase:'choosing',round:1,dice:[1,2,3,4],rollerId:'a',participants:[{id:'a',displayName:'Flo'}]};
+   view.update(base);view.update({...base,round:2,dice:[3,3,2,4]});
+   results.push({mode,roll:view.element.style.getPropertyValue('--roll-duration'),cup:getComputedStyle(view.element.querySelector('.dice-cup')).animationDuration});
+   view.cleanup();view.element.remove();
+  }return results;
+ });
+ check(durations.map(d=>parseFloat(d.cup)).join(',')==='0.375,0.75,1.125','Becherzeit skaliert im gleichen Verhältnis wie kurze, normale und lange Würfelzeit');
+ check(durations.map(d=>parseFloat(d.roll)).join(',')==='2,4,6','Gewählte Gesamtdauer der Würfelanimation bleibt erhalten');
+ check(errors.length===0,'Keine JavaScript-Laufzeitfehler in den geprüften Browserabläufen');
+ console.log(JSON.stringify({passed:checks,errors,artifacts:out}));
+}catch(error){console.error(JSON.stringify({url:page?.url(),errors,requests:requests.slice(-12),feedback:await page?.locator('.feedback:not([hidden])').allTextContents()}));await page?.screenshot({path:out+'/Fehler.png'});throw error;
+}finally{await browser?.close();server.kill();await queue.catch(()=>{});await db?.close();}

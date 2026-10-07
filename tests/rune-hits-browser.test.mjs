@@ -1,0 +1,81 @@
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import {randomUUID} from 'node:crypto';
+import {createRuneHitsDatabase,runeHitsFixture} from './helpers/rune-hits.mjs';
+import {register,userRpc,publishFixture} from './helpers/games.mjs';
+import {installTestDice,forceDice,newPlayGame,seedState} from './helpers/turns.mjs';
+import {callRpc} from './helpers/database.mjs';
+import {CONFIG} from '../web/js/config.js';
+import {browserOptions} from './helpers/browser.mjs';
+
+const root=fileURLToPath(new URL('../',import.meta.url)),url='http://localhost:5214',out=root+'test-artifacts/1_0_1';
+const server=spawn(process.execPath,['scripts/serve.mjs'],{cwd:root,env:{...process.env,PORT:'5214'},stdio:'ignore'});
+let browser,db,page,queue=Promise.resolve(),checks=0;const errors=[];
+const serial=fn=>{const job=queue.then(fn);queue=job.catch(()=>{});return job;};
+const check=(value,label)=>{assert.ok(value,label);checks++;console.log('PASS',label);};
+try{
+ db=await createRuneHitsDatabase();await installTestDice(db);const a=await register(db,'RunenBrowser'),b=await register(db,'RunenGast');
+ await db.query(`update dungeon_players set preferences=preferences||'{"diceAnimation":"none","sound":false,"music":false}'::jsonb`);
+ for(let i=0;i<100;i++){try{if((await fetch(url)).ok)break;}catch{}await new Promise(r=>setTimeout(r,30));}
+ await mkdir(out,{recursive:true});browser=await chromium.launch(browserOptions());
+ const context=await browser.newContext({viewport:{width:1366,height:900}});
+ await context.addInitScript(({key,session})=>localStorage.setItem(key,JSON.stringify(session)),{key:CONFIG.sessionStorageKey,session:a.session});
+ await context.route(CONFIG.supabaseUrl+'/**',async route=>{
+  const request=route.request(),path=new URL(request.url()).pathname;
+  if(!path.startsWith('/rest/v1/rpc/'))return route.abort();
+  try{let result=await serial(()=>callRpc(db,path.split('/').at(-1),request.postDataJSON()||{}));if(path.endsWith('/app_status'))result={...result,realtimeAvailable:false};await route.fulfill({contentType:'application/json',body:JSON.stringify(result)});}
+  catch(error){await route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({message:error.message})});}
+ });
+ page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(url+'/#/settings');await page.locator('.mark-option[data-style="weave"].owned').waitFor();
+ check(await page.locator('[data-shop-category="markStyle"] .mark-option.owned').count()===3,'Drei Markierungen sind bei null Guthaben sofort verfügbar');
+ check(await page.locator('[data-shop-category="campStyle"] .mark-option.owned').count()===2,'Zwei Hintergründe sind bei null Guthaben sofort verfügbar');
+ check(await page.locator('[data-shop-category="markStyle"] .mark-owned').filter({hasText:'Kostenlos'}).count()===3,'Gratis-Markierungen haben keine Kaufknöpfe');
+ check(await page.locator('[data-shop-category="campStyle"] .mark-owned').filter({hasText:'Kostenlos'}).count()===2,'Gratis-Hintergründe sind klar als kostenlos gekennzeichnet');
+ await page.locator('label[for="mark-weave"]').click();await page.locator('label[for="campStyle-dawn"]').click();await page.locator('#save-settings').click();await page.locator('.feedback').filter({hasText:'Deine Einstellungen wurden gespeichert.'}).waitFor();
+ let profile=(await serial(()=>userRpc(db,a,'get_player_profile'))).profile;
+ check(profile.preferences.markStyle==='weave'&&profile.preferences.campStyle==='dawn'&&profile.cosmetics.balance===0,'Kostenlose Auswahl wird ohne Kauf dauerhaft gespeichert');
+ await page.screenshot({path:out+'/Gratis_Startauswahl.png'});
+ await page.goto(url+'/editor/');await page.waitForFunction(()=>window.DungeonEditor);
+ await page.evaluate(async doc=>{await window.DungeonEditor.load(doc);window.DungeonEditor.setReadOnly(false);},runeHitsFixture());
+ await page.locator('.room[data-id="6"] .room-body').click({button:'right'});
+ check(await page.locator('#runeEffect').inputValue()==='unlock'&&await page.locator('#runeHitsLabel').isHidden(),'Bestehende Runen starten mit unveränderter Freischaltwirkung');
+ await page.locator('#runeEffect').selectOption('hits');check(await page.locator('#runeHits').inputValue()==='3','Neue Trefferwirkung hat drei Treffer als Vorgabe');
+ await page.locator('#runeHits').fill('5');await page.locator('#runeHits').press('Tab');
+ let doc=await page.evaluate(()=>window.DungeonEditor.getDocument());
+ check(doc.rooms.find(r=>r.id===6).runeHits===5&&doc.rules.bossHits.some(e=>e.sourceCellId===6&&e.hits===5),'Trefferzahl und abgeleitete Bosswirkung werden zusammen gespeichert');
+ check(!doc.rooms.find(r=>r.id===5).attacks.some(a=>a.number===11),'Wechsel zur Trefferwirkung entfernt die frühere automatische Bosszahl');
+ await page.locator('#runeHits').fill('0');await page.locator('#runeHits').press('Tab');check(await page.locator('#runeHits').inputValue()==='5','Ungültige Trefferzahl wird ohne Änderung zurückgesetzt');
+ await page.locator('#closeMenu').click();check(await page.locator('.room[data-id="6"] [data-rune-hits="5"]').count()===1,'Trefferrune zeigt ihre Wirkung direkt im Feld');
+ await page.locator('#undo').click();doc=await page.evaluate(()=>window.DungeonEditor.getDocument());check(doc.rooms.find(r=>r.id===6).runeHits===3,'Trefferänderung lässt sich rückgängig machen');
+ await page.locator('#redo').click();check((await page.evaluate(()=>window.DungeonEditor.getDocument())).rooms.find(r=>r.id===6).runeHits===5,'Trefferänderung lässt sich wiederherstellen');
+ await page.locator('.room[data-id="6"] .room-body').click({button:'right'});await page.locator('#fieldType').selectOption('normal');check(await page.locator('#runeForm').isHidden(),'Runenoptionen verschwinden bei anderen Feldtypen');await page.locator('#closeMenu').click();
+ doc=await page.evaluate(()=>window.DungeonEditor.getDocument());check(!doc.rules.bossHits.some(e=>e.sourceCellId===6)&&!Object.hasOwn(doc.rooms.find(r=>r.id===6),'runeEffect'),'Umwandlung entfernt die Trefferwirkung vollständig');
+ await page.locator('#undo').click();await page.locator('#exportProject').click();doc=JSON.parse(await page.locator('#saveText').inputValue());check(doc.rooms.find(r=>r.id===6).runeHits===5,'Portable JSON enthält die Runeneinstellungen');await page.locator('#closeFile').click();
+ await page.evaluate(async doc=>window.DungeonEditor.load(doc),doc);await page.locator('.room[data-id="6"] .room-body').click({button:'right'});check(await page.locator('#runeEffect').inputValue()==='hits'&&await page.locator('#runeHits').inputValue()==='5','JSON-Import stellt Wirkung und Trefferzahl wieder her');await page.locator('#closeMenu').click();
+ await page.screenshot({path:out+'/Editor_Runentreffer.png'});
+ await page.locator('#openLayout').click();await page.locator('#layoutPNG').click();await page.locator('#pngPreview').waitFor();const src=await page.locator('#pngPreview').getAttribute('src');check(src.startsWith('data:image/png;base64,'),'Drucklayout mit Runentreffern wird exportiert');await writeFile(out+'/Drucklayout_Runentreffer.png',Buffer.from(src.split(',')[1],'base64'));
+ await page.goto(url);await page.locator('.home-view').waitFor();
+ await page.evaluate(async doc=>{const {testMode}=await import('/js/games/test-mode.js');testMode({api:{},document:doc,profile:{preferences:{markStyle:'cross'}}});},runeHitsFixture());
+ await page.locator('#test-board-svg .game-cell-target[data-cell-id="2"]').waitFor();await page.locator('#test-board-svg .game-cell-target[data-cell-id="2"]').click({button:'right',force:true});
+ check(await page.locator('#test-board-svg .enemy-info[data-id="5"] [data-hit][fill="#375b48"]').count()===3,'Rechtsklick im Testmodus trägt drei Bosstreffer ein');
+ await page.locator('#test-board-svg .game-cell-target[data-cell-id="2"]').click({button:'right',force:true});check(await page.locator('#test-board-svg .enemy-info[data-id="5"] [data-hit][fill="#375b48"]').count()===3,'Erneutes Markieren derselben Rune vergibt keine weiteren Treffer');
+ await page.locator('#test-board-svg .game-cell-target[data-cell-id="3"]').click({button:'right',force:true});check(await page.locator('#test-score').textContent().then(s=>s.includes('6 ♦')),'Letzte Test-Rune vergibt die Bossbelohnung');
+ await page.screenshot({path:out+'/Testmodus_Runensieg.png'});await page.locator('.test-mode-header button').click();
+ check((await serial(()=>userRpc(db,a,'get_player_profile'))).profile.cosmetics.balance===0,'Testbelohnung verändert kein Online-Guthaben');
+ const map=await serial(()=>publishFixture(db,a,'Browser-Runenkarte',runeHitsFixture())),gid=await serial(()=>newPlayGame(db,[a,b],{fog:false,cards:'open'},map));
+ for(const u of [a,b])await serial(()=>seedState(db,gid,u,{reached:['1','4'],monsterHits:{4:2,5:3}}));await serial(()=>forceDice(db,[2,3,4,5]));
+ await page.goto(url+'/#/game?id='+gid);await page.locator('#roll-dice').waitFor();await page.locator('#roll-dice').click();await page.locator('#game-board-svg .game-cell-target[data-cell-id="2"]').waitFor();await page.locator('#game-board-svg .game-cell-target[data-cell-id="2"]').click();
+ await page.waitForFunction(()=>document.querySelectorAll('#game-board-svg .enemy-info[data-id="5"] [data-hit][fill="#375b48"]').length===6);
+ check((await serial(()=>userRpc(db,a,'get_game',{p_game_id:gid}))).game.ownState.diamonds===6,'Normaler Online-Klick besiegt den Boss durch die Rune und vergibt sechs Diamanten');
+ check(await page.locator('.game-event-toast').filter({hasText:'Runenwächter'}).count()>0||await page.locator('body').textContent().then(s=>s.includes('Runenwächter besiegt')),'Runensieg erscheint als reguläre Bossmeldung');
+ await page.screenshot({path:out+'/Online_Runensieg.png'});
+ const g=(await serial(()=>userRpc(db,b,'get_game',{p_game_id:gid}))).game;
+ await serial(()=>userRpc(db,b,'play_game_action',{p_game_id:gid,p_round:g.round,p_state_revision:g.turn.ownRevision,p_action:'cell',p_cell_id:'2',p_use_red:false,p_request_id:randomUUID()}));
+ check((await serial(()=>userRpc(db,a,'get_game',{p_game_id:gid}))).game.status==='finished','Gemeinsame Endrunde schließt die Online-Partie ab');
+ check(errors.length===0,`Keine Browserfehler: ${errors.join(', ')}`);console.log(JSON.stringify({passed:checks,artifacts:out}));
+}catch(error){console.error(error.message);console.error(JSON.stringify({url:page?.url(),errors,feedback:await page?.locator('.feedback:not([hidden])').allTextContents()}));await page?.screenshot({path:out+'/Fehler.png',timeout:5000}).catch(()=>{});throw error;
+}finally{await browser?.close();server.kill();await queue.catch(()=>{});await db?.close();}

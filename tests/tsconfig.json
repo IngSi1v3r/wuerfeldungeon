@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["deno-stub.d.ts", "../supabase/functions/avatar-upload/index.ts", "../supabase/functions/map-asset-upload/index.ts"]
+}
