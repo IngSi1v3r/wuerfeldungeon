@@ -1,6 +1,6 @@
 # Würfeldungeon 1.1.0
 
-Multiplayer-Würfelspiel mit gemeinsamer Kartenwerkstatt, individuellen Spielbrettern, gespeicherten Partien und Druckexport..
+Multiplayer-Würfelspiel mit gemeinsamer Kartenwerkstatt, individuellen Spielbrettern, gespeicherten Partien und Druckexport.
 
 Installation und Update: [SETUP.md](SETUP.md). Ein bestehendes Projekt mit Version 1.0.2 benötigt nur das Upgrade `supabase/migrations/032_solo_ai_highscores.sql` und die neuen Webdateien. Das erhält alle Daten. Die separate Datei `supabase/RESET_ALL_DATA.sql` ist ausdrücklich destruktiv und ausschließlich für den vollständigen Neustart gedacht.
 
