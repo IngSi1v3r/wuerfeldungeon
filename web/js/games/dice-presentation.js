@@ -2,7 +2,7 @@ import {audio} from '../audio.js';
 import {h} from '../dom.js';
 import {diceFace,serverRoll} from './dice.js';
 
-export function diceCup(style=document.body.dataset.cupStyle||'leather'){
+export function diceCup(style=document.body?.dataset.cupStyle||'leather'){
  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
  svg.setAttribute('viewBox','0 0 150 170');svg.setAttribute('class','dice-cup');svg.setAttribute('data-cup-style',style);svg.setAttribute('aria-hidden','true');
  const colors=({leather:['#7c4c30','#deb878','#a96f44','#573b29'],wood:['#b28047','#edce94','#c99860','#79522e'],runic:['#264f4b','#bcd7ab','#3f7068','#193b38']})[style]||['#7c4c30','#deb878','#a96f44','#573b29'];

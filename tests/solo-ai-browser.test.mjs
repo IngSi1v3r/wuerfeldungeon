@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {mkdir} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
-import {createSoloDatabase,soloFixture} from './helpers/solo-ai.mjs';
+import {soloFixture} from './helpers/solo-ai.mjs';
+import {createAdventurerDatabase as createSoloDatabase} from './helpers/adventurers.mjs';
 import {register,userRpc,publishFixture} from './helpers/games.mjs';
 import {installTestDice,forceDice,seedState} from './helpers/turns.mjs';
 import {callRpc} from './helpers/database.mjs';
@@ -65,7 +66,7 @@ try{
  await page.goto(url+'/#/game?id='+humanId);await page.locator('.result-dialog .highscore-row').waitFor();
  check(await page.locator('.result-dialog .personal-rank').isVisible(),'Abschluss zeigt Bestenliste und persönliche Position');
  await page.locator('.result-dialog').getByRole('button',{name:'Schließen',exact:true}).click();await page.goto(url+'/#/highscores');await page.locator('.highscore-row').waitFor();await page.locator('.highscore-row summary').click();
- check(await page.locator('.highscore-details').innerText().then(t=>t.includes('Punkte')&&t.includes('Runden')&&t.includes('KI (experimentell)')),'Details zeigen Punkte, Runden und KI-Gegner');
+ check(await page.locator('.highscore-details').innerText().then(t=>t.includes('Punkte')&&t.includes('Runden')&&t.includes('Abenteurer (experimentell)')),'Details zeigen Punkte, Runden und KI-Gegner');
  await page.screenshot({path:out+'/Bestenliste.png',fullPage:true});
  await page.setViewportSize({width:390,height:844});check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Bestenliste passt auf ein Handy');
  await page.screenshot({path:out+'/Bestenliste_Handy.png',fullPage:true});

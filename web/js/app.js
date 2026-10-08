@@ -127,7 +127,7 @@ async function renderRoute(force=false) {
     else show(playView(ctx));
   }
   else if (next==='history') show(historyView(ctx));
-  document.title=`${{home:'Dein Lager',profile:'Profil',settings:'Einstellungen',play:'Spielen','new-game':'Neues Spiel',solo:'Einzelspiel','ai-lab':'KI-Labor · experimentell',highscores:'Bestenlisten',game:'Spielraum',editor:'Kartenwerkstatt',history:'Chronik'}[next]} · Würfeldungeon`;
+  document.title=`${{home:'Dein Lager',profile:'Profil',settings:'Einstellungen',play:'Spielen','new-game':'Neues Spiel',solo:'Einzelspiel','ai-lab':'Abenteurerprobe · experimentell',highscores:'Bestenlisten',game:'Spielraum',editor:'Kartenwerkstatt',history:'Chronik'}[next]} · Würfeldungeon`;
 }
 
 function connectionRecovery(error) {

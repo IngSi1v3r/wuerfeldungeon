@@ -10,7 +10,7 @@ export function playView(ctx) {
  const {api,status}=ctx;let closed=false,loaded=false;
  const message=feedback(),lobbies=h('div',{class:'game-list',id:'lobby-list'}),ongoing=h('div',{class:'game-list',id:'ongoing-list'}),live=liveIndicator();
  const element=h('section',{class:'play-view'},pageHeading('Gemeinsam spielen','Das nächste Abenteuer wartet.'),
-  h('div',{class:'play-toolbar'},h('a',{class:'button primary',id:'new-game',href:'#/new-game'},icon('dice'),'Neues Spiel'),h('a',{class:'button primary',id:'new-solo',href:'#/solo'},icon('user'),'Neues Einzelspiel'),h('a',{class:'button secondary',href:'#/ai-lab'},icon('settings'),'KI-Labor · experimentell'),h('a',{class:'button secondary',href:'#/history'},icon('book'),'Chronik'),live.element,
+  h('div',{class:'play-toolbar'},h('a',{class:'button primary',id:'new-game',href:'#/new-game'},icon('dice'),'Neues Spiel'),h('a',{class:'button primary',id:'new-solo',href:'#/solo'},icon('user'),'Neues Einzelspiel'),h('a',{class:'button secondary',href:'#/ai-lab'},icon('settings'),'Abenteurerprobe · experimentell'),h('a',{class:'button secondary',href:'#/history'},icon('book'),'Chronik'),live.element,
    h('button',{class:'button secondary',title:'Spiele aktualisieren',id:'refresh-games',onclick:()=>watch.refresh()},'↻')),message,
   h('div',{class:'game-section-heading'},h('h2',{},'Deine laufenden Spiele')),ongoing,
   h('div',{class:'game-section-heading'},h('h2',{},'Offene Warteräume')),lobbies);

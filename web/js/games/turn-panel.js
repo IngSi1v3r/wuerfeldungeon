@@ -23,6 +23,9 @@ export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onWaitStatus,
  const element=h('section',{class:'turn-panel','aria-label':'Würfel und Zug'},title,diceArea,buttons,timer);
  const prompt=h('div',{class:'turn-prompt'}),overlay=h('div',{class:'turn-overlay'},prompt,wait);
  const lives=h('aside',{class:'game-lives','aria-label':'Lebensanzeige'}),tasks=h('aside',{class:'game-tasks','aria-label':'Bonusaufgaben'});
+ const canGiveLife=()=>current&&!current.busy&&!current.mode?.awaitingLoss&&current.game.status==='playing'&&current.game.turn?.canAct&&current.game.turn?.canLoseLife;
+ lives.addEventListener('click',()=>{if(canGiveLife())onLoseLife?.();});
+ lives.addEventListener('keydown',event=>{if(['Enter',' '].includes(event.key)&&canGiveLife()){event.preventDefault();onLoseLife?.();}});
  const total=h('strong',{id:'own-points'}),diamonds=h('span',{class:'score-diamonds'}),penalty=h('span',{class:'score-penalty'}),gold=h('span',{class:'score-gold'}),resources=h('div',{class:'score-resources'});
  const score=h('section',{class:'game-score','aria-label':'Deine Punkte und Powerups'},h('div',{class:'score-total'},total,h('span',{},'Punkte')),h('div',{class:'score-details'},diamonds,gold,penalty),resources);
  function closeWait(restoreFocus=false){
@@ -82,12 +85,12 @@ export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onWaitStatus,
   content.append(...taskBody(current.game,key,true));detail={key,dialog,content};dialog.addEventListener('close',()=>{if(detail?.dialog===dialog)detail=null;dialog.remove();},{once:true});document.body.append(dialog);dialog.showModal();
  }
  function update(game,busy=false,mode={}) {
-  current={game,busy};offset=Date.parse(game.serverNow||new Date().toISOString())-Date.now();
+  current={game,busy,mode};offset=Date.parse(game.serverNow||new Date().toISOString())-Date.now();
   const waitingKind=gameWaitKind(game),waitKey=JSON.stringify([game.id,game.round,waitingKind,waitingKind==='roll'?game.rollerId:game.choiceStartedAt]);
   if(waitKey!==lastWait){lastWait=waitKey;closeWait();}
   const own=game.ownState||{},turn=game.turn||{},roller=game.participants.find(p=>p.id===game.rollerId),me=game.participants.find(p=>p.id===profile.id),ended=['finished','cancelled'].includes(game.status),sealed=game.phase==='round_complete';
   element.dataset.ownStatus=turn.canAct?'act':'wait';
-  const text=mode.awaitingLoss?'Wurf wird ausgewertet …':ended?(game.status==='finished'?'Abgeschlossen':'Abgebrochen'):game.status==='paused'?'Pause':turn.pendingPowerup?'Truhe geöffnet':mode.torch?(mode.middleCellId?'Fackel · Zielfeld wählen':'Fackel · Zwischenraum wählen'):mode.axe?'Axt des Doppelschlags aktiv':sealed?'Schlusswertung':me?.eliminated?'Ausgeschieden':game.spectator?'KI-Test · experimentell':game.phase==='waiting_roll'?(game.rollerId===profile.id?'Dein Wurf':`${roller?.displayName||'Nächster Spieler'} würfelt`):turn.done?'Warten auf Mitspieler':'Du bist am Zug';
+  const text=mode.awaitingLoss?'Wurf wird ausgewertet …':ended?(game.status==='finished'?'Abgeschlossen':'Abgebrochen'):game.status==='paused'?'Pause':turn.pendingPowerup?'Truhe geöffnet':mode.torch?(mode.middleCellId?'Fackel · Zielfeld wählen':'Fackel · Zwischenraum wählen'):mode.axe?'Axt des Doppelschlags aktiv':sealed?'Schlusswertung':me?.eliminated?'Ausgeschieden':game.spectator?'Abenteurerprobe · experimentell':game.phase==='waiting_roll'?(game.rollerId===profile.id?'Dein Wurf':`${roller?.displayName||'Nächster Spieler'} würfelt`):turn.done?'Warten auf Mitspieler':'Du bist am Zug';
   const completed=game.participants.filter(p=>p.active&&!p.eliminated&&p.turnDone).length,totalPlayers=game.participants.filter(p=>p.active&&!p.eliminated).length;
   renderSection(title,[text,completed,totalPlayers],()=>[h('span',{id:'turn-message',role:'status'},text),h('span',{class:'turn-completion',title:'Gespeicherte Züge'},`${completed}/${totalPlayers} ✓`)]);
   const showPrompt=turn.canRoll||game.status==='paused'||game.phase==='waiting_roll'&&!ended||sealed||mode.torch||mode.axe;
@@ -105,6 +108,7 @@ export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onWaitStatus,
     turn.pendingPowerup&&game.status==='playing'?h('button',{id:'choose-powerup',class:'button primary',disabled:busy,onclick:onChoosePowerup},'Powerup wählen'):null,
     turn.canAct&&turn.canLoseLife?h('button',{id:'lose-life',class:'button secondary',disabled:busy,onclick:onLoseLife},icon('heart'),'Leben verlieren'):null]);
   const penalties=[...Array(own.extraLives||0).fill(0),0,0,-1,-2,-4,-6,-9,-12,-16,-20,'†'];
+  const voluntary=Boolean(canGiveLife());lives.classList.toggle('can-give-life',voluntary);lives.setAttribute('role','button');lives.setAttribute('tabindex',voluntary?'0':'-1');lives.setAttribute('aria-disabled',String(!voluntary));lives.title=voluntary?'Ein Leben verlieren und Hilfsmittel sparen':'Lebensanzeige';lives.setAttribute('aria-label',voluntary?'Lebensanzeige · freiwillig ein Leben verlieren':'Lebensanzeige');
   renderSection(lives,[own.extraLives,own.lostLives],()=>[h('h3',{},icon('heart'),'Leben'),h('div',{class:'life-boxes',...(penalties.length>11?{'data-extra':true}:{})},...penalties.map((p,i)=>h('span',{class:`life-box ${i<(own.lostLives||0)?'lost':''}`,title:`${i+1}. Verlust: ${p==='†'?'ausgeschieden':`${p} Punkte`}`,'aria-label':`${i+1}. Lebensfeld${i<(own.lostLives||0)?' · verloren':''}`},p))),h('small',{},`${own.lostLives||0} / ${penalties.length}`)]);
   total.textContent=String(pointsSoFar(own));score.querySelector('.score-total').title=ended&&game.status==='finished'?'Punkte gesamt':'Punkte bisher';
   renderSection(diamonds,own.diamonds,()=>[icon('diamond'),h('strong',{},own.diamonds||0)]);diamonds.title=`${own.diamonds||0} Diamanten`;

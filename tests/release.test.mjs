@@ -39,7 +39,7 @@ test('Vollständige Neueinrichtung funktioniert atomar ohne alten Registrierungs
   await db.exec('create role anon;create role authenticated;create role service_role;grant usage on schema public to anon,authenticated,service_role;create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);');
   const install=await readFile(new URL('../supabase/install.sql',import.meta.url),'utf8');
   await db.exec(install);
-  const checks=await db.exec(await readFile(new URL('../supabase/migrations/033_check_solo_ai_highscores.sql',import.meta.url),'utf8'));
+  const checks=await db.exec(await readFile(new URL('../supabase/migrations/035_check_adventurers.sql',import.meta.url),'utf8'));
   assert.ok(checks[0].rows.every(r=>r.ergebnis==='OK'));
   const status=await callRpc(db,'app_status');assert.equal(status.registrationOpen,true);assert.equal(status.registrationCodeRequired,false);
   const u=await callRpc(db,'register_player',{p_username:'erstespielerin',p_display_name:'Erste Spielerin',p_password:'Passwort123',p_access_code:''});assert.equal(u.ok,true);

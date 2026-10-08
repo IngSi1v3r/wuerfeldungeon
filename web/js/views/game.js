@@ -29,7 +29,9 @@ export function gameView(ctx) {
  const playInstalled=status?.playSchemaVersion===CONFIG.playSchemaVersion;
  const rulesInstalled=status?.rulesSchemaVersion===CONFIG.rulesSchemaVersion;
  const panel=turnPanel({profile,onWaitStatus:updateWaitIndicators,onHorn:()=>command('use_game_horn',{p_game_id:gameId,p_state_revision:game.turn.ownRevision},async()=>{audio.effect('horn');await watch.refresh();}),onTorch:rulesInstalled?toggleTorch:null,onAxe:rulesInstalled?()=>{axeMode=!axeMode;torchMode=false;middleCellId=null;render();}:null,onChoosePowerup:rulesInstalled?()=>openPowerup(true):null,onRoll:()=>command('roll_game_dice',{p_game_id:gameId,p_round:game.round}),onLoseLife:()=>{
-  if(confirm('Ein Leben verlieren und diesen Zug beenden? Deine Powerup-Verwendungen bleiben erhalten.'))playTurn(null,'lose_life');
+  if(!game?.turn?.canAct||!game.turn.canLoseLife||commands.busy||awaitingLoss)return;
+  const fatal=(game.ownState.lostLives||0)+1>=11+(game.ownState.extraLives||0);
+  if(confirm(`Ein Leben verlieren und diesen Zug beenden? Deine roten Würfel und Fackeln bleiben erhalten.${fatal?' Achtung: Damit scheidest du aus.':''}`))playTurn(null,'lose_life');
  },onResolveWait:(id,action)=>{
   if(confirm(action==='remove'?'Diesen Spieler aus dem laufenden Spiel entfernen?':gameWaitKind(game)==='roll'?'Diesen Wurf an den nächsten aktiven Spieler weitergeben? Der Spieler bleibt im Spiel und kann danach seinen Zug machen.':'Diesen offenen Zug ohne Lebensabzug überspringen? Eine noch offene Powerup-Auswahl verfällt dabei.'))command('resolve_game_wait',{p_game_id:gameId,p_round:game.round,p_target_player_id:id,p_action:action});
  }});
@@ -130,7 +132,7 @@ export function gameView(ctx) {
    renderSection(row.name,p.displayName,()=>p.displayName);row.name.title=p.displayName;
    renderSection(row.score,p.points||0,()=>String(p.points||0));row.score.title='Punkte';row.roller.hidden=p.id!==game.rollerId;
    row.article.classList.toggle('current-roller',p.id===game.rollerId);row.article.classList.toggle('eliminated',p.eliminated);
-   row.article.classList.toggle('is-ai',Boolean(p.isBot));row.name.title=p.isBot?'KI · experimentell':p.displayName;
+   row.article.classList.toggle('is-ai',Boolean(p.isBot));row.name.title=p.isBot?'Abenteurer · experimentell':p.displayName;
    row.article.title=p.eliminated?'Ausgeschieden':p.turnDone?'Zug gespeichert':p.displayName;
    if(game.settings.cards==='open'){
     if(!row.mini){const mini=board?.thumbnail(opponentView(p.id));if(mini){row.mini=h('button',{class:'opponent-miniature',type:'button',onclick:()=>openOpponent(game.participants.find(player=>player.id===p.id))},mini);row.article.append(row.mini);}}
@@ -178,7 +180,7 @@ export function gameView(ctx) {
    renderSection(roomOthers,game.participants.length>1,()=>game.participants.length>1?roomPlayers:null);updateRoomPlayers();
    renderSection(pause,[host,ended,game.status,commands.busy],()=>host&&!ended?h('button',{id:'pause-game',class:'table-icon-button',disabled:commands.busy,title:game.status==='paused'?'Pause beenden':'Für alle pausieren','aria-label':game.status==='paused'?'Pause beenden':'Für alle pausieren',onclick:()=>manage(game.status==='paused'?'resume':'pause')},icon(game.status==='paused'?'play':'pause')):null);
    renderSection(roomControls,[host,ended,game.status,playInstalled,rulesInstalled,game.settings,game.participants.map(p=>[p.id,p.displayName]),commands.busy],()=>[
-    h('strong',{},game.map.name),game.experimentalAI?h('span',{class:'experimental-badge'},'KI · experimentell'):null,settingsBadges(game.settings),
+    h('strong',{},game.map.name),game.experimentalAI?h('span',{class:'experimental-badge'},'Abenteurer · experimentell'):null,settingsBadges(game.settings),
     h('p',{class:'phase-note',id:'game-phase-note'},!playInstalled?'Bitte das aktuelle Datenbank-Update aus SETUP.md installieren.':!rulesInstalled?'Bitte das aktuelle Datenbank-Update für Powerups und Wertung installieren.':''),
     h('div',{class:'button-row'},host&&!ended&&game.mode==='multiplayer'&&game.participants.length>1?h('label',{class:'host-transfer'},'Host übergeben',h('select',{'aria-label':'Host übergeben',disabled:commands.busy,onchange:event=>{if(event.target.value)manage('host',event.target.value);event.target.value='';}},h('option',{value:''},'Spieler wählen'),...game.participants.filter(p=>p.id!==profile.id).map(p=>h('option',{value:p.id},p.displayName)))):null,
      host&&!ended?h('button',{id:'cancel-game',class:'text-button danger',disabled:commands.busy,onclick:()=>manage('cancel')},'Spiel abbrechen'):null,

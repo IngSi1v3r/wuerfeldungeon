@@ -49,7 +49,7 @@ export function boardPreview(api,definition,{onCell=()=>{},onContextCell=()=>{},
     crazy:new Map(),traps:new Map()};
    painted.set(canvas,previous);
   }
-  const key=JSON.stringify([next.state?.reached,next.state?.monsterHits,next.hints?next.actions:null,next.claims,next.markStyle,next.interactive,next.middleCellId,next.roundRequirements,next.traps,next.fog,next.visibleCells,next.contextInteractive]);
+  const key=JSON.stringify([next.state?.reached,next.state?.monsterHits,next.hints?next.actions:null,next.claims,next.markStyle,next.interactive,next.middleCellId,next.roundRequirements,next.traps,next.fog,next.visibleCells,next.contextInteractive,next.overlays,next.analysis,next.hideBaseMarks]);
   if(previous.key===key)return;previous.key=key;
   const state=next.state||{},reached=new Set((state.reached||[]).map(String)),legal=new Map((next.hints?next.actions||[]:[]).map(a=>[String(a.cellId),a])),claims=new Map((next.claims||[]).map(c=>[String(c.cellId),c]));
   attr(canvas,'data-fog',Boolean(next.fog));
@@ -85,8 +85,8 @@ export function boardPreview(api,definition,{onCell=()=>{},onContextCell=()=>{},
    }
    const x=r.x*24+9,y=r.y*24+9,w=r.w*24-18,h=r.h*24-18;
    const oldMark=marked.get(id);
-   if(oldMark&&(!done||!oldMark.classList.contains(style))){oldMark.remove();marked.delete(id);}
-   if(done&&!marked.has(id)){const g=sv('g',{'data-marked-cell':id,class:`played-mark ${style}`});
+   if(oldMark&&(!done||next.hideBaseMarks||!oldMark.classList.contains(style))){oldMark.remove();marked.delete(id);}
+   if(done&&!next.hideBaseMarks&&!marked.has(id)){const g=sv('g',{'data-marked-cell':id,class:`played-mark ${style}`});
     for(const p of markingPrimitives(style,x,y,w,h))g.append(sv(p.tag,p.attrs));
     attr(g,'visibility',seen?'visible':'hidden');marks.append(g);marked.set(id,g);
    }
@@ -100,6 +100,31 @@ export function boardPreview(api,definition,{onCell=()=>{},onContextCell=()=>{},
    if(!needed)strike?.remove();
    else if(!strike){const b=JSON.parse(first.getAttribute('data-strike-bounds')||'null')||first.getBBox();info.append(sv('path',{'data-reward-strike':true,d:`M ${b.x-2} ${b.y+b.height/2} L ${b.x+b.width+2} ${b.y+b.height/2}`,stroke:'#a34238','stroke-width':1.7}));}
   }
+  paintExtras(canvas,previous,next,visible);
+ }
+ function paintExtras(canvas,previous,next,visible){
+  const key=JSON.stringify([next.overlays,next.analysis,next.visibleCells]);if(previous.extrasKey===key)return;previous.extrasKey=key;
+  let layer=canvas.querySelector('.adventurer-overlays');
+  if(!next.overlays?.length&&!next.analysis){layer?.remove();return;}
+  if(!layer){layer=sv('g',{class:'adventurer-overlays','pointer-events':'none'});canvas.insertBefore(layer,canvas.querySelector('.game-cell-targets'));}
+  const pieces=[];
+  for(const r of rooms){const id=String(r.id);if(visible&&!visible.has(id))continue;
+   const walkers=(next.overlays||[]).filter(p=>(p.state?.reached||[]).map(String).includes(id)),fighters=(next.overlays||[]).filter(p=>p.state?.monsterHits?.[id]>0);
+   if(walkers.length){const cols=Math.ceil(Math.sqrt(walkers.length)),rows=Math.ceil(walkers.length/cols),w=(r.w*24-20)/cols,h=(r.h*24-20)/rows;
+    walkers.forEach((p,i)=>{const x=r.x*24+10+i%cols*w,y=r.y*24+10+Math.floor(i/cols)*h,g=sv('g',{'data-overlay-player':p.id,'data-overlay-cell':id,class:'adventurer-mark'}),title=sv('title');title.textContent=p.name;g.append(title);
+     for(const primitive of markingPrimitives(p.markStyle||'cross',x+3,y+3,Math.max(8,w-6),Math.max(8,h-6))){const attrs={...primitive.attrs};for(const prop of ['fill','stroke'])if(attrs[prop]&&attrs[prop]!=='none')attrs[prop]=p.color;if(attrs['stroke-width'])attrs['stroke-width']=Math.min(Number(attrs['stroke-width']),Math.max(2,w/10));g.append(sv(primitive.tag,attrs));}pieces.push(g);
+    });
+   }
+   if(fighters.length)fighters.forEach((p,i)=>{const text=sv('text',{x:r.x*24+10,y:r.y*24+r.h*24-12-i*20,fill:p.color,stroke:'#fff','stroke-width':3,'paint-order':'stroke','font-size':17,'font-weight':800,'data-overlay-hits':p.id});text.textContent=`${p.label||p.name?.slice(0,1)||i+1}: ${p.state.monsterHits[id]}/${r.hits}`;pieces.push(text);});
+  }
+  if(next.analysis){const byCell=new Map();for(const a of next.analysis.candidates||[]){if(!a.cellId)continue;const id=String(a.cellId);if(!byCell.has(id)||byCell.get(id).score<a.score)byCell.set(id,a);}
+   for(const [id,a] of byCell){const r=rooms.find(r=>String(r.id)===id);if(!r||visible&&!visible.has(id))continue;const chosen=next.analysis.candidates?.find(c=>c.key===next.analysis.selected&&String(c.cellId)===id),group=sv('g',{'data-analysis-cell':id,'data-analysis-score':a.score,class:chosen?'analysis-selected':'analysis-candidate'});
+    group.append(sv('rect',{x:r.x*24+5,y:r.y*24+5,width:r.w*24-10,height:r.h*24-10,rx:6,fill:'none',stroke:chosen?'#b87820':'#397ca0','stroke-width':chosen?5:2.5,'stroke-dasharray':chosen?'none':'8 5'}));
+    const badgeW=Math.min(r.w*24-12,76),x=r.x*24+r.w*12-badgeW/2,y=r.y*24+6;group.append(sv('rect',{x,y,width:badgeW,height:24,rx:5,fill:chosen?'#b87820':'#28556d'}));const text=sv('text',{x:r.x*24+r.w*12,y:y+17,fill:'#fff','font-size':15,'font-weight':800,'text-anchor':'middle'});text.textContent=`${chosen?'★ ':''}${a.score.toFixed(1)}`;group.append(text);pieces.push(group);
+   }
+   const picked=next.analysis.candidates?.find(c=>c.key===next.analysis.selected);if(picked?.middleCellId){const r=rooms.find(r=>String(r.id)===String(picked.middleCellId));if(r)pieces.push(sv('rect',{x:r.x*24+5,y:r.y*24+5,width:r.w*24-10,height:r.h*24-10,rx:6,fill:'none',stroke:'#b87820','stroke-width':4,'stroke-dasharray':'4 4','data-analysis-middle':r.id}));}
+  }
+  layer.replaceChildren(...pieces);
  }
  function paintFog(canvas,previous,next){
   const key=JSON.stringify([Boolean(next.fog),next.visibleCells,next.state?.reached]);if(previous.fogKey===key)return;previous.fogKey=key;

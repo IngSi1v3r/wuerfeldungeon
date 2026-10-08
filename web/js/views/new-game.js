@@ -6,13 +6,24 @@ import {mapMiniature} from './maps.js';
 import {GameCommands} from '../games/commands.js';
 import {gameLink} from '../games/ui.js';
 import {powerupSelection} from '../games/powerups.js';
+import {ADVENTURERS,adventurerCharacter} from '../games/adventurers.js';
 
 export function newGameView({api,status,solo=false}) {
  let closed=false,selected=null,availableMaps=[];const commands=new GameCommands(api),message=feedback(),grid=h('div',{class:'game-map-selection',id:'game-map-selection'});
  const name=h('input',{id:'game-name',required:true,maxlength:80,autocomplete:'off'}),max=h('select',{id:'game-max-players'},...Array.from({length:15},(_,i)=>h('option',{value:i+2},`${i+2} Spieler`)));max.value='8';
- const bots=h('select',{id:'solo-bots'},...Array.from({length:8},(_,n)=>h('option',{value:n},n?`${n} KI-${n===1?'Gegner':'Gegner'} · experimentell`:'Ohne KI')));
+ const bots=h('select',{id:'solo-bots'},...Array.from({length:8},(_,n)=>h('option',{value:n},n?`${n} ${n===1?'Abenteurer':'Abenteurer'} · experimentell`:'Alleine reisen')));
+ const characterChoices=h('div',{class:'adventurer-choices',id:'adventurer-choices'}),chosenCharacters=[];
+ function updateCharacters(){
+  characterChoices.hidden=!Number(bots.value);characterChoices.replaceChildren(...Array.from({length:Number(bots.value)},(_,i)=>{
+   const select=h('select',{'data-adventurer-seat':i,'aria-label':`Charakter von Abenteurer ${i+1}`},...ADVENTURERS.map(c=>h('option',{value:c.id},`${c.symbol} ${c.name}`)));select.value=chosenCharacters[i]||ADVENTURERS[i%ADVENTURERS.length].id;chosenCharacters[i]=select.value;
+   const portrait=h('span',{class:'adventurer-emblem','aria-hidden':true}),description=h('small',{class:'muted'});
+   const paint=()=>{const c=adventurerCharacter(select.value);chosenCharacters[i]=c.id;portrait.textContent=c.symbol;portrait.style.setProperty('--adventurer-color',c.color);description.textContent=c.description;};select.addEventListener('change',paint);paint();
+   return h('div',{class:'adventurer-choice'},portrait,h('div',{},h('label',{},`Abenteurer ${i+1}`,select),description));
+  }));
+ }
+ bots.addEventListener('change',updateCharacters);updateCharacters();
  const aiOnly=h('input',{id:'solo-ai-only',type:'checkbox'}),redEvery=h('select',{id:'solo-red-every'},h('option',{value:0},'Wie im Mehrspieler: einmal pro Teilnehmerzyklus'),...Array.from({length:4},(_,n)=>h('option',{value:n+1},n?`Jede ${n+1}. Runde`:'Jede Runde'))),runs=h('select',{id:'solo-test-runs'},...[1,3,5,10].map(n=>h('option',{value:n},`${n} ${n===1?'Partie':'Partien'} automatisch`)));
- aiOnly.addEventListener('change',()=>{if(aiOnly.checked&&Number(bots.value)<1)bots.value='2';for(const o of bots.options)o.disabled=aiOnly.checked&&Number(o.value)<1;runs.disabled=!aiOnly.checked;submit.textContent=aiOnly.checked?'KI-Testreihe starten · experimentell':'Einzelspiel starten';});
+ aiOnly.addEventListener('change',()=>{if(aiOnly.checked&&Number(bots.value)<1)bots.value='2';for(const o of bots.options)o.disabled=aiOnly.checked&&Number(o.value)<1;runs.disabled=!aiOnly.checked;submit.textContent=aiOnly.checked?'Abenteurerprobe starten · experimentell':'Einzelspiel starten';updateCharacters();});
  runs.disabled=true;
  const password=h('input',{id:'game-password',type:'password',maxlength:72,autocomplete:'new-password',placeholder:'Kein Passwort'});
  const cards=h('input',{id:'game-cards',type:'checkbox',checked:true});
@@ -31,16 +42,16 @@ export function newGameView({api,status,solo=false}) {
  const form=h('form',{class:'panel game-options',id:'create-game-form',onsubmit:async event=>{
   event.preventDefault();if(!selected)return;submit.disabled=true;setFeedback(message,'');
   try {if(new TextEncoder().encode(password.value).length>72)throw Error('Das Spielpasswort darf höchstens 72 UTF-8-Bytes lang sein.');
-   if(solo&&status?.soloAIVersion!==1)throw Error('Bitte zuerst das Datenbank-Update 032 installieren.');
-   const result=await commands.run(solo?'create_solo_game':'create_game',{p_map_version_id:selected.versionId,p_name:name.value.trim(),p_settings:{maxPlayers:Number(max.value),cards:cards.checked?'open':'hidden',hints:modern?sums.checked&&fields.checked:hints.value==='true',...(modern?{diceHints:sums.checked,fieldHints:fields.checked,fog:fog.checked}:{}),...(customPowers?{allowedPowerups:powers.values()}:{})},...(solo?{p_bot_count:Number(bots.value),p_red_every:Number(redEvery.value),p_ai_only:aiOnly.checked}:{p_password:password.value})});
+   if(solo&&status?.adventurerVersion!==2)throw Error('Bitte zuerst das Datenbank-Update 034 installieren.');
+   const result=await commands.run(solo?'create_solo_game':'create_game',{p_map_version_id:selected.versionId,p_name:name.value.trim(),p_settings:{maxPlayers:Number(max.value),cards:cards.checked?'open':'hidden',hints:modern?sums.checked&&fields.checked:hints.value==='true',...(modern?{diceHints:sums.checked,fieldHints:fields.checked,fog:fog.checked}:{}),...(customPowers?{allowedPowerups:powers.values()}:{}),...(solo?{adventurers:chosenCharacters.slice(0,Number(bots.value))}:{})},...(solo?{p_bot_count:Number(bots.value),p_red_every:Number(redEvery.value),p_ai_only:aiOnly.checked}:{p_password:password.value})});
    password.value='';if(!closed)location.hash=solo&&aiOnly.checked?`#/ai-lab?id=${result.gameId}&runs=${runs.value}`:gameLink(result.gameId);
   } catch(error){if(!closed)setFeedback(message,error.message);}finally{if(!closed)submit.disabled=!selected;}
  }},h('button',{type:'button',class:'back-link',id:'choose-another-map',onclick:()=>showStep(false)},icon('back'),'Andere Karte wählen'),h('p',{class:'eyebrow'},'2 · Deine Runde'),selectedLabel,chosenPreview,h('div',{class:'game-form-grid'},
-  h('label',{class:'map-form-label game-name-label'},'Name des Spiels',name),solo?h('label',{class:'map-form-label'},'KI-Gegner · experimentell',bots):h('label',{class:'map-form-label'},'Maximale Spieleranzahl',max),solo?h('label',{class:'map-form-label'},'Roter Würfel kostenlos',redEvery):h('label',{class:'map-form-label'},'Spielpasswort · optional',password),
-  solo?h('fieldset',{class:'game-rule-options experimental-options'},h('legend',{},'KI-Testmodus · experimentell'),h('label',{},aiOnly,'Nur KI spielt · ich schaue zu'),h('label',{class:'map-form-label'},'Testreihe',runs),h('p',{class:'muted'},'Automatische KI-Partien haben eine eigene Auswertung. Sie zählen nicht für Profil, Shop oder menschliche Bestenlisten.')):null,
+  h('label',{class:'map-form-label game-name-label'},'Name des Spiels',name),solo?h('label',{class:'map-form-label'},'Mitreisende · experimentell',bots):h('label',{class:'map-form-label'},'Maximale Spieleranzahl',max),solo?h('label',{class:'map-form-label'},'Roter Würfel kostenlos',redEvery):h('label',{class:'map-form-label'},'Spielpasswort · optional',password),
+  solo?h('fieldset',{class:'game-rule-options experimental-options'},h('legend',{},'Abenteurerprobe · experimentell'),h('label',{},aiOnly,'Nur Abenteurer spielen · ich schaue zu'),h('label',{class:'map-form-label'},'Testreihe',runs),h('p',{class:'muted'},'Automatische Partien haben eine eigene Auswertung. Sie zählen nicht für Profil, Shop oder menschliche Bestenlisten.')):null,
   h('fieldset',{class:'game-rule-options'},h('legend',{},'Spielhilfen und Sicht'),h('label',{},cards,'Offene Karten der Mitspieler'),modern?h('label',{},sums,'Würfelsummen anzeigen'):null,modern?h('label',{},fields,'Spielbare Felder hervorheben'):null,modern?h('label',{},fog,'Fog of War · zwei Felder Sicht'):null),
   modern?null:h('label',{class:'map-form-label'},'Kombinationen und erreichbare Felder',hints)),
-  customPowers?powers.element:null,submit);
+  solo?characterChoices:null,customPowers?powers.element:null,submit);
  form.hidden=true;
  const heading=pageHeading(solo?'Einzelspiel':'Eine Runde beginnen',solo?'Wähle dein Abenteuer.':'Wähle eure Welt.'),choose=h('div',{id:'choose-game-map'},heading,h('p',{class:'eyebrow'},'1 · Karte wählen'),grid);
  const element=h('section',{class:'new-game-view'},h('a',{class:'back-link',href:'#/play'},icon('back'),'Zur Spielauswahl'),choose,message,form);

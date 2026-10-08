@@ -1,0 +1,47 @@
+// Die echte UI gegen isoliertes PostgreSQL; keine Änderungen am Live-Projekt.
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {mkdir} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import {randomUUID} from 'node:crypto';
+import {createAdventurerDatabase} from './helpers/adventurers.mjs';
+import {soloFixture} from './helpers/solo-ai.mjs';
+import {register,userRpc,publishFixture} from './helpers/games.mjs';
+import {installTestDice,forceDice,seedState} from './helpers/turns.mjs';
+import {callRpc} from './helpers/database.mjs';
+import {browserOptions} from './helpers/browser.mjs';
+import {CONFIG} from '../web/js/config.js';
+const root=fileURLToPath(new URL('../',import.meta.url)),url='http://localhost:5217',out=root+'test-artifacts/1_2_0';
+const server=spawn(process.execPath,['scripts/serve.mjs'],{cwd:root,env:{...process.env,PORT:'5217'},stdio:'ignore'});
+let browser,db,page,queue=Promise.resolve(),checks=0;const errors=[];
+const serial=fn=>{const p=queue.then(fn);queue=p.catch(()=>{});return p;};const check=(v,label)=>{assert.ok(v,label);checks++;console.log('PASS',label);};
+try{
+ db=await createAdventurerDatabase();await installTestDice(db);await forceDice(db,[2,3,4,5]);const a=await register(db,'AbenteurerFlo'),map=await publishFixture(db,a,'Abenteuermine',soloFixture());await db.exec("update dungeon_players set preferences=preferences||'{\"diceAnimation\":\"none\",\"sound\":false}'::jsonb");
+ for(let i=0;i<100;i++){try{if((await fetch(url)).ok)break;}catch{}await new Promise(r=>setTimeout(r,30));}
+ await mkdir(out,{recursive:true});browser=await chromium.launch(browserOptions());const context=await browser.newContext({viewport:{width:1500,height:950}});
+ await context.route(CONFIG.supabaseUrl+'/**',async route=>{const req=route.request(),path=new URL(req.url()).pathname;if(!path.startsWith('/rest/v1/rpc/'))return route.abort();try{let result=await serial(()=>callRpc(db,path.split('/').at(-1),req.postDataJSON()||{}));if(path.endsWith('/app_status'))result={...result,realtimeAvailable:false};await route.fulfill({contentType:'application/json',body:JSON.stringify(result)});}catch(e){await route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({message:e.message})});}});
+ page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>errors.push(e.message));const rpc=(name,args={})=>serial(()=>userRpc(db,a,name,args));
+ await page.goto(url);await page.locator('#username').fill('abenteurerflo');await page.locator('#password').fill('testing42');await page.locator('#auth-submit').click();await page.locator('.home-view').waitFor();await page.goto(url+'/#/solo');await page.locator('#game-map-selection button').click();await page.locator('#solo-bots').selectOption('2');
+ check(await page.locator('[data-adventurer-seat]').count()===2,'Ein eigener Charakter pro Abenteurer');await page.locator('[data-adventurer-seat="0"]').selectOption('treasure');await page.locator('[data-adventurer-seat="1"]').selectOption('rival');await page.locator('#solo-ai-only').check();await page.locator('#create-game').click();await page.locator('#ai-lab-steps').check();
+ await page.locator('#ai-lab-board-svg').waitFor();await page.locator('.analysis-table tbody tr').first().waitFor();const id=new URLSearchParams(new URL(page.url()).hash.split('?')[1]).get('id');
+ check(await page.locator('#ai-lab-player').inputValue()==='all','Gemeinsame Ansicht ist die Standardansicht');check((await rpc('get_game',{p_game_id:id})).game.phase==='choosing','Schrittansicht hält nach dem Wurf an');
+ check(await page.locator('#ai-lab-dice .dice-face').count()===4,'Wurf ist während der Entscheidungsanalyse sichtbar');check(await page.locator('[data-analysis-cell]').count()>0,'Erreichbare Felder mit internen Bewertungen am Brett');check(await page.locator('.analysis-table tr.chosen').count()===1,'Gewählter Zug ist eindeutig markiert');check((await page.locator('#ai-analysis-body').innerText()).includes('2 Folgerunden'),'Analyse erklärt die Vorausplanung');
+ await page.locator('#ai-lab-advance').click();await page.waitForFunction(()=>document.querySelector('#ai-lab-position')?.textContent.includes('Runde 2'));
+ await page.locator('[data-overlay-player]').first().waitFor();check(await page.locator('.adventurer-seat').count()===2,'Farblegende für beide Abenteurer');check((await page.locator('[data-overlay-player]').evaluateAll(nodes=>new Set(nodes.map(n=>n.getAttribute('data-overlay-player'))).size))===2,'Beide Fortschritte liegen auf demselben Brett');
+ const logs=await rpc('get_adventurer_journal',{p_game_id:id});check(logs.decisions.filter(d=>d.kind==='cell').length===2,'Angenommene Entscheidungen werden gespeichert');
+ await page.locator('#ai-lab-prev').click();check((await page.locator('#ai-lab-position').innerText())==='Runde 1','Rundenweise rückwärts');await page.locator('#ai-lab-prev').click();check((await page.locator('#ai-lab-position').innerText())==='Vor dem ersten Zug','Bis zum unveränderten Anfang zurück');check(await page.locator('[data-overlay-player]').count()===0,'Rückblick zeigt den damaligen Fortschritt');
+ await page.locator('#ai-lab-next').click();check(await page.locator('[data-overlay-player]').count()>=2,'Rundenweise vorwärts');await page.locator('#ai-lab-live').click();check((await rpc('get_game',{p_game_id:id})).game.round===2,'Verlauf verändert den echten Spielstand nicht');
+ await page.locator('#ai-lab-fullscreen').click();check(await page.evaluate(()=>Boolean(document.fullscreenElement)),'Probe unterstützt Vollbild');await page.evaluate(()=>document.exitFullscreen());await page.screenshot({path:out+'/Abenteurer_Analyse.png',fullPage:true});
+ await page.locator('#ai-lab-pause').click();await page.waitForFunction(()=>document.querySelector('#ai-lab-status')?.textContent.includes('Pausiert'));check((await rpc('get_game',{p_game_id:id})).game.status==='paused','Pause stoppt die Partie');await page.locator('#ai-lab-pause').click();await page.waitForFunction(()=>!document.querySelector('#ai-lab-status')?.textContent.includes('Pausiert'));await page.locator('#ai-lab-steps').uncheck();
+ await page.waitForFunction(()=>document.querySelector('#ai-lab-status')?.textContent.includes('Testreihe abgeschlossen'),{},{timeout:40000});check((await rpc('get_game',{p_game_id:id})).game.status==='finished','Abenteurerprobe läuft automatisch fertig');
+ await page.reload();await page.locator('#ai-lab-board-svg').waitFor();await page.locator('#ai-lab-analysis').check();await page.locator('#ai-lab-round').evaluate(n=>{n.value='1';n.dispatchEvent(new Event('input',{bubbles:true}));});await page.locator('.analysis-table tbody tr').first().waitFor();check((await page.locator('#ai-analysis-body').innerText()).includes('2 Folgerunden'),'Analyse bleibt nach Neuladen erhalten');
+ await page.setViewportSize({width:390,height:844});check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Probe und Analyse passen auch auf ein Handy');await page.screenshot({path:out+'/Abenteurer_Handy.png',fullPage:true});
+ // Lebensanzeige: native Bestätigung mit Abbruch und erfolgreichem optionalen Verzicht.
+ const lifeId=(await rpc('create_solo_game',{p_map_version_id:map.versionId,p_name:'Ressourcen sparen',p_settings:{cards:'open',hints:true,fog:false},p_bot_count:0,p_red_every:3,p_ai_only:false,p_request_id:randomUUID()})).gameId;await serial(()=>db.query('update dungeon_games set round_index=2 where id=$1',[lifeId]));await serial(()=>forceDice(db,[1,1,1,4]));await rpc('roll_game_dice',{p_game_id:lifeId,p_round:2,p_request_id:randomUUID()});
+ await page.setViewportSize({width:1366,height:900});await page.goto(url+'/#/game?id='+lifeId);await page.locator('.game-lives.can-give-life').waitFor();page.once('dialog',d=>d.dismiss());await page.locator('.game-lives').click();check((await rpc('get_game',{p_game_id:lifeId})).game.ownState.lostLives===0,'Abgebrochene Warnung verändert nichts');
+ page.once('dialog',d=>d.accept());await page.locator('.game-lives').click();await page.waitForFunction(()=>document.querySelector('#game-round')?.textContent.includes('Runde 3'));let game=(await rpc('get_game',{p_game_id:lifeId})).game;check(game.ownState.lostLives===1&&game.ownState.redUses===3,'Bestätigter Klick verliert Leben und erhält roten Würfel');await page.getByRole('button',{name:'Verstanden',exact:true}).click();
+ await serial(()=>seedState(db,lifeId,a,{reached:['1'],redUses:0,torchUses:2,powerups:['torch']}));await serial(()=>forceDice(db,[3,4,4,6]));await rpc('roll_game_dice',{p_game_id:lifeId,p_round:3,p_request_id:randomUUID()});await page.locator('#refresh-game').click();await page.locator('.game-lives.can-give-life').waitFor();page.once('dialog',d=>d.accept());await page.locator('.game-lives').focus();await page.keyboard.press('Enter');await page.waitForFunction(()=>document.querySelector('#game-round')?.textContent.includes('Runde 4'));game=(await rpc('get_game',{p_game_id:lifeId})).game;check(game.ownState.lostLives===2&&game.ownState.torchUses===2,'Lebensanzeige lässt auch Fackeln sparen und ist per Tastatur bedienbar');
+ check(errors.length===0,`Keine JavaScript-Fehler: ${errors.join('; ')}`);console.log(`${checks} Abenteurer-Browserprüfungen erfolgreich.`);
+}catch(e){if(page)await page.screenshot({path:out+'/Fehler.png',fullPage:true}).catch(()=>{});throw e;}
+finally{await browser?.close();server.kill();await queue;await db?.close();}

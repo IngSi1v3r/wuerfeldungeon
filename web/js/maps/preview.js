@@ -14,7 +14,7 @@ export function renderedPreview(api,map) {
     try {
       const editor=await new Promise((resolve,reject)=>{
         let attempts=0;const timer=setInterval(()=>{
-          if(frame.contentDocument?.documentElement.dataset.ready==='true'){clearInterval(timer);resolve(frame.contentWindow.DungeonEditor);}
+          if(frame.contentDocument?.documentElement?.dataset.ready==='true'){clearInterval(timer);resolve(frame.contentWindow.DungeonEditor);}
           else if(++attempts>250){clearInterval(timer);reject(Error('Vorschau konnte nicht geladen werden.'));}
         },40);
       });

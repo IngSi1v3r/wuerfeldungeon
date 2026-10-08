@@ -37,7 +37,7 @@ try{
    await route.fulfill({contentType:'application/json',body:JSON.stringify(result)});
   }catch(error){await route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({message:error.message})});}
  });
- page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));
+ page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>(errors.push(e.message),console.error('BROWSER ERROR',e.stack)));
  await page.goto(url);await page.locator('#register-tab').click();
  check(await page.locator('#access-code').count()===0,'Registrierungsformular verlangt keinen Zugangscode');
  await page.locator('#username').fill('neuimlager');await page.locator('#display-name').fill('Neu im Lager');await page.locator('#password').fill('Passwort123');await page.locator('#password-confirm').fill('Passwort123');
