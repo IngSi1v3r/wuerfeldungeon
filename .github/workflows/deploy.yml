@@ -14,7 +14,8 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Playwright 1.56.1 kann Chromium auf Ubuntu 26.04 nicht installieren.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       pages: read

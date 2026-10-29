@@ -13,3 +13,7 @@ Ausgangspunkt: das funktionierende Archiv 1.2.0. Die bestehende Datenbank wird m
 Die Browserprüfung ist als ausführbares Skript enthalten. Nach `npx playwright install chromium` lässt sie sich mit `npm run test:artifacts-browser` auf einem Entwicklungsrechner starten. Sie prüft Handy-Hochformat, Querformat, Powerup-Knöpfe und den verschwindenden Monsterrahmen.
 
 Das produktive Supabase-Projekt und die GitHub-Website wurden nicht verändert. Installationsschritte stehen in SETUP.md.
+
+## GitHub Actions Korrektur
+
+Der erste Workflow mit `ubuntu-latest` landete auf Ubuntu 26.04. Playwright 1.56.1 brach dort bei `npx playwright install --with-deps chromium` ab; die vorherigen Schritte `npm ci`, `npm run check` und `npm test` waren erfolgreich. Der Build-Runner ist daher ausdrücklich auf `ubuntu-24.04` gesetzt. An der Webapp und an der Datenbank wurde für diese Korrektur nichts geändert.

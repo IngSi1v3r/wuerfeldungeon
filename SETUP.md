@@ -6,6 +6,8 @@
 2. Das ZIP entpacken. Den **Inhalt des Ordners `wuerfeldungeon`** in deinen lokalen Repository-Ordner kopieren und gleichnamige Dateien ersetzen. Die Struktur `web/`, `supabase/`, `tests/`, `scripts/` und `.github/` bleibt erhalten. In GitHub Desktop committen und **Push origin** klicken.
 3. Auf den erfolgreichen GitHub-Actions-Lauf warten und die Website mit **Strg+F5** neu laden. Unten soll **1.3.0** stehen.
 
+Falls die SQL bereits fünfmal **OK** gemeldet hat und nur GitHub Actions bei der Chromium-Installation fehlgeschlagen ist, reicht es, die korrigierte `.github/workflows/deploy.yml` zu übernehmen und zu pushen. Die Datenbankmigration nicht noch einmal ausführen.
+
 Spieler, Karten, laufende Partien, Guthaben und Bestenlisten bleiben erhalten. Neue Buckets und Edge Functions sind nicht erforderlich. Das SQL kann erneut ausgeführt werden. `RESET_ALL_DATA.sql` gehört ausdrücklich nicht zu diesem Update.
 
 ## Neue Spielregeln
