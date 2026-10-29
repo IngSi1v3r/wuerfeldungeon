@@ -64,7 +64,7 @@ try{
  check(await page.locator('#test-board-svg .enemy-info[data-id="5"] [data-hit][fill="#375b48"]').count()===3,'Rechtsklick im Testmodus trägt drei Bosstreffer ein');
  await page.locator('#test-board-svg .game-cell-target[data-cell-id="2"]').click({button:'right',force:true});check(await page.locator('#test-board-svg .enemy-info[data-id="5"] [data-hit][fill="#375b48"]').count()===3,'Erneutes Markieren derselben Rune vergibt keine weiteren Treffer');
  await page.locator('#test-board-svg .game-cell-target[data-cell-id="3"]').click({button:'right',force:true});check(await page.locator('#test-score').textContent().then(s=>s.includes('6 ♦')),'Letzte Test-Rune vergibt die Bossbelohnung');
- await page.screenshot({path:out+'/Testmodus_Runensieg.png'});await page.locator('.test-mode-header button').click();
+ await page.screenshot({path:out+'/Testmodus_Runensieg.png'});await page.getByRole('button',{name:'Test schließen'}).click();
  check((await serial(()=>userRpc(db,a,'get_player_profile'))).profile.cosmetics.balance===0,'Testbelohnung verändert kein Online-Guthaben');
  const map=await serial(()=>publishFixture(db,a,'Browser-Runenkarte',runeHitsFixture())),gid=await serial(()=>newPlayGame(db,[a,b],{fog:false,cards:'open'},map));
  for(const u of [a,b])await serial(()=>seedState(db,gid,u,{reached:['1','4'],monsterHits:{4:2,5:3}}));await serial(()=>forceDice(db,[2,3,4,5]));
