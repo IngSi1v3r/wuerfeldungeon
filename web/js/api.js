@@ -6,7 +6,7 @@ const ERRORS={
   SHOP_INSUFFICIENT_DIAMONDS:'Dein Guthaben reicht dafür noch nicht. Der Shop wird aktualisiert.',
   SHOP_REQUEST_INVALID:'Diese Kaufanfrage gehört zu einer anderen Kosmetik. Bitte erneut versuchen.',
   GAME_POWERUP_PENDING:'Bitte zuerst das Powerup aus deiner geöffneten Truhe wählen.',
-  GAME_POWERUP_UNAVAILABLE:'Dieses Powerup wurde bereits gewählt oder ist auf dieser Karte nicht freigegeben.',
+  GAME_POWERUP_UNAVAILABLE:'Dieses Powerup ist gerade nicht verfügbar oder seine Verwendungen sind aufgebraucht.',
   GAME_CHEST_INVALID:'Für diese Truhe ist keine Auswahl mehr offen. Der Spielstand wird neu geladen.',
   GAME_TORCH_EMPTY:'Du hast keine Fackelverwendung mehr.',
   GAME_TORCH_PATH:'Wähle zuerst einen angrenzenden, noch freien Raum und dann dessen Nachbarfeld. Ein Gegner kann kein Zwischenraum sein.',

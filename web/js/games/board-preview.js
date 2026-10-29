@@ -34,9 +34,9 @@ export function boardPreview(api,definition,{onCell=()=>{},onContextCell=()=>{},
    if(pointers.size===1)setBox([box[0]-(next.x-previous.x)/scale,box[1]-(next.y-previous.y)/scale,box[2],box[3]]);
    else {const [a,b]=[...pointers.values()],distance=Math.hypot(a.x-b.x,a.y-b.y);if(pinch&&distance>0)zoom(pinch/distance,...focal((a.x+b.x)/2,(a.y+b.y)/2));pinch=distance;}
   });
-  svg.addEventListener('pointerup',e=>{const target=tap;tap=null;pointers.delete(e.pointerId);pinch=null;if(target?.id&&target.pointer===e.pointerId&&view?.interactive)onCell(target.id);});
+  svg.addEventListener('pointerup',e=>{const target=tap;tap=null;pointers.delete(e.pointerId);pinch=null;if(target?.id&&target.pointer===e.pointerId&&view?.interactive){onCell(target.id);if(document.activeElement?.hasAttribute?.('data-cell-id'))document.activeElement.blur();}});
   for(const event of ['pointercancel','lostpointercapture'])svg.addEventListener(event,e=>{pointers.delete(e.pointerId);pinch=null;tap=null;});
-  svg.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)&&e.target.hasAttribute('data-cell-id')){e.preventDefault();if(view?.interactive)onCell(e.target.getAttribute('data-cell-id'));}});
+  svg.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)&&e.target.hasAttribute('data-cell-id')){e.preventDefault();if(view?.interactive){onCell(e.target.getAttribute('data-cell-id'));e.target.blur();}}});
  }
  function update(next){view=next;toggle(stage,'fog-active',next.fog);if(svg)paint(svg,next);}
  function paint(canvas,next){
@@ -60,7 +60,7 @@ export function boardPreview(api,definition,{onCell=()=>{},onContextCell=()=>{},
    for(const group of [roomGroup,info,imageGroup,marked.get(id)])if(group)attr(group,'visibility',seen?'visible':'hidden');
    if(target){
     attr(target,'visibility',seen||next.contextInteractive?'visible':'hidden');attr(target,'aria-hidden',!seen);attr(target,'tabindex',seen?0:-1);
-    toggle(target,'legal-cell',action&&next.interactive);toggle(target,'red-cell',action?.redOnly&&next.interactive);toggle(target,'reached-cell',done);toggle(target,'torch-middle',next.middleCellId===id);
+    toggle(target,'legal-cell',action&&!done&&next.interactive);toggle(target,'red-cell',action?.redOnly&&!done&&next.interactive);toggle(target,'reached-cell',done);toggle(target,'torch-middle',next.middleCellId===id);
     const shownRoom=r.type==='crazy'?{...r,number:next.roundRequirements?.[id]??null}:r;
     attr(target,'aria-label',seen?`${roomLabel(shownRoom)}${r.type==='trap'&&trapStates.get(id)?.armed?' · scharf':''}${done?' · erreicht':''}${action&&next.interactive?` · ${action.redOnly?'mit rotem Würfel':'spielbar'}`:''}`:'Im Nebel');attr(target,'aria-disabled',!seen||!next.interactive||done);
    }

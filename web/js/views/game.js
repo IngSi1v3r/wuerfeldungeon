@@ -16,6 +16,7 @@ import {turnPanel,redDiceDialog} from '../games/turn-panel.js';
 import {renderSection} from '../games/render.js';
 import {dicePresentation} from '../games/dice-presentation.js';
 import {gameFullscreen} from '../games/fullscreen.js';
+import {effectiveDice,flaskOptions,magicDiceDialog,numberFlaskDialog} from '../games/artifacts.js';
 
 export function gameView(ctx) {
  const {api,profile,status,toast,gameId}=ctx;let ai=null,closed=false,game=null,definition=null,board=null,currentMode=null,joining=false,confirming=false,lastEvent=null,torchMode=false,middleCellId=null,axeMode=false,torchActions=[],torchLoading=false,ownKey=null,powerDialog=null,powerKey=null,dismissedPowerKey=null,opponent=null,finishedShown=false,notifications=Promise.resolve(),awaitingLoss=false,serverOffset=0,hornKey=null;
@@ -28,7 +29,11 @@ export function gameView(ctx) {
  const rotateHint=h('div',{class:'rotate-hint'},h('span',{},'↻ Mehr Platz im Querformat'),h('button',{type:'button','aria-label':'Querformat-Hinweis schließen',onclick:()=>{rotateHint.hidden=true;}},icon('close')));
  const playInstalled=status?.playSchemaVersion===CONFIG.playSchemaVersion;
  const rulesInstalled=status?.rulesSchemaVersion===CONFIG.rulesSchemaVersion;
- const panel=turnPanel({profile,onWaitStatus:updateWaitIndicators,onHorn:()=>command('use_game_horn',{p_game_id:gameId,p_state_revision:game.turn.ownRevision},async()=>{audio.effect('horn');await watch.refresh();}),onTorch:rulesInstalled?toggleTorch:null,onAxe:rulesInstalled?()=>{axeMode=!axeMode;torchMode=false;middleCellId=null;render();}:null,onChoosePowerup:rulesInstalled?()=>openPowerup(true):null,onRoll:()=>command('roll_game_dice',{p_game_id:gameId,p_round:game.round}),onLoseLife:()=>{
+ const panel=turnPanel({profile,onWaitStatus:updateWaitIndicators,onHorn:()=>command('use_game_horn',{p_game_id:gameId,p_state_revision:game.turn.ownRevision},async()=>{audio.effect('horn');await watch.refresh();}),onTorch:rulesInstalled?toggleTorch:null,onAxe:rulesInstalled?()=>{axeMode=!axeMode;torchMode=false;middleCellId=null;render();}:null,
+  onMagic:()=>{if(!game?.turn?.canAct||!Array.isArray(game.dice))return;magicDiceDialog({dice:effectiveDice(game),onChoose:async(index,delta)=>{const answer=await command('use_game_magic',{p_game_id:gameId,p_state_revision:game.turn.ownRevision,p_die_index:index,p_delta:delta});if(answer?.error)throw answer.error;}});},
+  onFlask:()=>{if(!game?.turn?.canAct)return;const state=game.ownState;if(state.storedNumber!=null){const answer=command('toggle_stored_number',{p_game_id:gameId,p_state_revision:game.turn.ownRevision,p_active:state.storedActiveRound!==game.round});torchMode=false;axeMode=false;middleCellId=null;return answer;}
+   const options=flaskOptions({dice:effectiveDice(game),freeRed:game.turn.freeRed,redUses:state.redUses});numberFlaskDialog({options,onChoose:async(number,useRed)=>{const answer=await command('store_game_number',{p_game_id:gameId,p_state_revision:game.turn.ownRevision,p_number:number,p_use_red:useRed});if(answer?.error)throw answer.error;}});},
+  onChoosePowerup:rulesInstalled?()=>openPowerup(true):null,onRoll:()=>command('roll_game_dice',{p_game_id:gameId,p_round:game.round}),onLoseLife:()=>{
   if(!game?.turn?.canAct||!game.turn.canLoseLife||commands.busy||awaitingLoss)return;
   const fatal=(game.ownState.lostLives||0)+1>=11+(game.ownState.extraLives||0);
   if(confirm(`Ein Leben verlieren und diesen Zug beenden? Deine roten Würfel und Fackeln bleiben erhalten.${fatal?' Achtung: Damit scheidest du aus.':''}`))playTurn(null,'lose_life');
@@ -166,7 +171,7 @@ export function gameView(ctx) {
   if(currentMode!==mode){currentMode=mode;body.replaceChildren();setMenu(false);}
   if(lobby) {
    body.replaceChildren(h('div',{class:'lobby-layout'},h('div',{class:'panel lobby-roster'},h('div',{class:'game-title-row'},h('h2',{},'Euer Trupp'),h('span',{class:'badge',id:'game-player-count'},`${game.playerCount} / ${game.settings.maxPlayers}`)),players(true)),
-    h('aside',{class:'panel lobby-map'},game.settings.fog?fogMiniature(api,game.map,definition):mapMiniature(api,game.map),h('h2',{},game.map.name),h('p',{class:'muted'},`${game.map.fields} Felder · ${game.map.enemies} Gegner`),
+    h('aside',{class:'panel lobby-map'},game.settings.fog?fogMiniature(api,game.map,definition,Number(game.settings.fogRange)||2):mapMiniature(api,game.map),h('h2',{},game.map.name),h('p',{class:'muted'},`${game.map.fields} Felder · ${game.map.enemies} Gegner`),
      lobbyRules(definition),h('section',{class:'lobby-powers'},h('h3',{},'Powerups dieser Partie'),h('div',{class:'game-badges'},...(game.powerupPool||definition?.allowedPowerups||[]).filter(p=>game.settings.fog||!['horn','binocular'].includes(p)).map(p=>h('span',{class:'badge'},POWERUP_INFO[p]?.symbol,' ',POWERUP_INFO[p]?.name))),host&&status?.lobbyPowerupsVersion===1?h('button',{type:'button',class:'text-button',id:'edit-lobby-powerups',disabled:commands.busy,onclick:()=>lobbyPowerupDialog({selected:game.powerupPool||definition.allowedPowerups,fog:game.settings.fog,onSave:async powers=>{const result=await command('update_lobby_powerups',{p_game_id:gameId,p_powerups:powers,p_expected_revision:game.revision});if(result?.error)throw result.error;}})},'Powerups anpassen'):null),h('button',{class:'button secondary',onclick:invite},icon('upload'),'Einladungslink kopieren'))),
      h('div',{class:'lobby-controls panel'},h('div',{},h('h2',{},host?'Alle da?':'Wir warten auf den Start.'),host?null:h('p',{class:'muted'},`${game.host.displayName} startet das Spiel.`)),
      h('div',{class:'button-row'},host?h('button',{id:'start-game',class:'button primary',disabled:commands.busy,onclick:()=>command('start_game',{p_game_id:gameId,p_expected_revision:game.revision})},icon('dice'),'Spiel starten'):null,
@@ -204,6 +209,7 @@ export function gameView(ctx) {
    const previousState=game?.ownState;game=data.game;
    if(!ai&&game.mode==='solo'&&game.host.id===profile.id&&game.participants.some(p=>p.isBot)&&!['finished','cancelled'].includes(game.status))ai=aiController({api,gameId,onChange:()=>watch.refresh(),onError:error=>setFeedback(message,error.message),enabled:()=>!commands.busy,delay:()=>Math.max(650,presentation.remaining()+100)});
    if(['finished','cancelled'].includes(game.status)){ai?.cleanup();ai=null;}serverOffset=Date.parse(game.serverNow||new Date().toISOString())-Date.now();definition=data.game.definition||definition;
+   if(definition)definition.fogRange=Number(game.settings.fogRange)||2;
    const key=`${game.round}:${game.turn?.ownRevision}`;if(ownKey!==key){ownKey=key;torchMode=false;axeMode=false;middleCellId=null;torchActions=[];}
    const nextPowerKey=game.turn?.pendingPowerup?`${game.ownState.pendingChests[0]}:${game.turn.ownRevision}`:null;
    if(powerDialog&&(powerKey!==nextPowerKey||game.status!=='playing'))powerDialog.close();

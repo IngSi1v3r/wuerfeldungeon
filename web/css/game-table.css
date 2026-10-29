@@ -384,3 +384,61 @@ body[data-dice-style="amber"] .dice-face.white {background:#f1cd83;border-color:
 .test-mode-dialog {overflow:auto;}
 .test-mode-dialog>* {flex-shrink:0;}
 .test-board-area {flex:0 0 auto;}
+
+/* Kartentest: dieselbe große Zeichenfläche wie im Spielraum. */
+.test-mode-dialog:fullscreen,.test-mode-dialog.test-expanded {width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;border-radius:0;padding:12px;}
+.test-mode-dialog:fullscreen .test-board-area,.test-mode-dialog.test-expanded .test-board-area {flex:1 1 auto;min-height:0;display:flex;}
+.test-mode-dialog:fullscreen .game-board-wrap,.test-mode-dialog.test-expanded .game-board-wrap {flex:1;min-height:0;}
+.test-mode-dialog:fullscreen .game-board-stage,.test-mode-dialog.test-expanded .game-board-stage {height:100%;min-height:0;}
+.test-fog-range {display:flex;align-items:center;gap:5px;font-size:12px;}
+.test-fog-range select {background:#173628;color:#f4e3bb;border:1px solid #a8b99488;border-radius:6px;padding:5px;}
+.artifact-dialog {width:min(620px,calc(100% - 24px));}
+.artifact-dice-row {display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:22px 0;}
+.artifact-die {display:grid;gap:8px;place-items:center;padding:10px;border:1px solid #b7bd9966;border-radius:13px;background:#29453a;}
+.artifact-die .dice-face {width:62px;height:62px;}
+.artifact-directions {display:flex;gap:5px;}.artifact-directions .button {min-width:48px;padding:6px;}
+.artifact-directions .button.chosen {border-color:#ffe0a0;background:#866b3d;}
+.artifact-dialog p .dice-face {display:inline-flex;vertical-align:middle;width:27px;height:27px;}
+.flask-choices {display:flex;flex-wrap:wrap;gap:9px;margin:20px 0;}.flask-choices .button {min-width:62px;font-size:19px;}
+
+@media(orientation:portrait) and (max-width:600px){
+ .game-immersive .room-play {display:contents;}
+ .game-immersive .game-board-wrap {order:1;flex:1 1 0;min-height:125px;width:100%;}
+ .game-immersive .game-dock {order:2;flex:0 0 auto;width:100%;max-height:135px;overflow-y:auto;padding:6px 9px;gap:3px;}
+ .game-immersive .game-side {order:3;flex:0 0 auto;display:grid;grid-template-columns:minmax(82px,auto) minmax(0,1fr);width:100%;max-height:106px;min-height:70px;padding:6px 8px;gap:8px;overflow:hidden;}
+ .game-immersive .game-lives {display:grid;grid-template-columns:1fr;gap:2px;min-width:78px;justify-items:center;}
+ .game-immersive .game-lives h3 {margin:0;font-size:10px;}
+ .game-immersive .game-lives>small {display:none;}
+ .game-immersive .life-boxes,.game-immersive .life-boxes[data-extra] {grid-template-rows:repeat(3,13px);grid-auto-flow:column;gap:2px;grid-row:2;}
+ .game-immersive .life-box {height:13px;width:17px;font-size:7px;}
+ .game-immersive .game-tasks {border-top:0;border-left:1px solid var(--table-border);margin:0;padding:0 0 0 8px;overflow-y:auto;}
+ .game-immersive .task-progress {padding:3px 5px;}
+ .game-immersive .task-progress .task-cells {flex-wrap:nowrap;overflow-x:auto;max-height:29px;}
+ .game-immersive .task-cell {height:23px;min-width:21px;width:21px;}
+ .game-immersive .turn-panel {min-height:0;}
+ .game-immersive .game-score {flex-wrap:wrap;justify-content:flex-start;gap:5px 12px;}
+ .game-immersive .score-resources {flex:1;justify-content:flex-start;}
+ .game-immersive .dice-and-options {flex-wrap:wrap;}
+ .game-immersive .turn-buttons {max-width:none;}
+ .game-immersive .rotate-hint {display:none;}
+}
+
+@media(orientation:landscape) and (max-height:600px) and (max-width:1050px){
+ .game-immersive #game-content {display:grid;grid-template-columns:minmax(126px,17vw) minmax(0,1fr) minmax(112px,16vw);grid-template-rows:auto minmax(0,1fr);gap:5px;}
+ .game-immersive .room-management {grid-column:1/-1;grid-row:1;}
+ .game-immersive .room-play {display:contents;}
+ .game-immersive .game-board-wrap {grid-column:2;grid-row:2;min-width:0;min-height:0;}
+ .game-immersive .game-side {grid-column:3;grid-row:2;min-width:0;min-height:0;}
+ .game-immersive .game-dock {grid-column:1;grid-row:2;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;gap:5px;min-width:0;min-height:0;max-height:none;overflow-y:auto;padding:6px;}
+ .game-immersive .game-score {display:flex;flex-direction:column;align-items:flex-start;gap:3px;}
+ .game-immersive .score-total {flex-direction:row;align-items:baseline;gap:5px;}
+ .game-immersive .score-total strong {font-size:23px;}
+ .game-immersive .score-details,.game-immersive .score-resources {gap:4px;}
+ .game-immersive .turn-panel {display:flex;flex-direction:column;align-items:stretch;gap:3px;}
+ .game-immersive .turn-title {justify-content:flex-start;}
+ .game-immersive .dice-and-options {flex-wrap:wrap;gap:4px;}
+ .game-immersive .dice-tray {flex-wrap:wrap;}
+ .game-immersive .dice-face {width:25px;height:25px;}
+ .game-immersive .score-penalty {display:none;}
+ .game-immersive .turn-buttons {max-width:none;}
+}

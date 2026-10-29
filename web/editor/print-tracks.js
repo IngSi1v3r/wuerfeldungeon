@@ -55,8 +55,10 @@ const PRINT_POWERS = Object.freeze({
   redDice:{name:'Roter Würfel',detail:'+3 Verwendungen',uses:3},
   torch:{name:'Fackel',detail:'2 Verwendungen',uses:2},
   axe:{name:'Axt des Doppelschlags',detail:'2 Verwendungen',uses:2},
-  binocular:{name:'Fernglas',detail:'Sichtweite 3 · dauerhaft',uses:1},
+  binocular:{name:'Fernglas',detail:'Sichtweite +1 · dauerhaft',uses:1},
   horn:{name:'Das Horn des Nebeljägers',detail:'Monsterblick · 10 s',uses:1},
+  magicDie:{name:'Magischer Würfel',detail:'Würfel ±1 · 2×',uses:2},
+  numberFlask:{name:'Zahlenbüchse',detail:'Zahl einpacken · 1×',uses:1},
 });
 
 export function paintPrintStatus(ctx,area,powers,{panel,text,art}) {

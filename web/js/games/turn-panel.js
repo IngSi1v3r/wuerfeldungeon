@@ -5,6 +5,7 @@ import {goalText} from '../maps/features.js';
 import {fieldSymbolNode} from '../maps/field-symbols.js';
 import {renderSection} from './render.js';
 import {diceFace,serverRoll} from './dice.js';
+import {effectiveDice} from './artifacts.js';
 
 export function redDiceDialog(uses) {
  return new Promise(resolve=>{
@@ -16,7 +17,7 @@ export function redDiceDialog(uses) {
  });
 }
 
-export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onWaitStatus,onTorch,onAxe,onHorn,onChoosePowerup}) {
+export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onWaitStatus,onTorch,onAxe,onHorn,onMagic,onFlask,onChoosePowerup}) {
  let current=null,offset=0,closed=false,lastWait=null,detail=null,waitPlayerId=null,waitOpener=null;
  const timerText=h('span'),timer=h('span',{id:'turn-hourglass',class:'turn-hourglass',hidden:true},icon('hourglass'),timerText),wait=h('div',{class:'wait-management',id:'wait-management',hidden:true,role:'dialog','aria-label':'Warteoptionen'});
  const title=h('div',{class:'turn-title'}),diceTray=h('div',{class:'dice-tray',id:'game-dice'}),options=h('div',{class:'dice-options'}),diceArea=h('div',{class:'dice-and-options',hidden:true},diceTray,options),buttons=h('div',{class:'turn-buttons'});
@@ -90,7 +91,7 @@ export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onWaitStatus,
   if(waitKey!==lastWait){lastWait=waitKey;closeWait();}
   const own=game.ownState||{},turn=game.turn||{},roller=game.participants.find(p=>p.id===game.rollerId),me=game.participants.find(p=>p.id===profile.id),ended=['finished','cancelled'].includes(game.status),sealed=game.phase==='round_complete';
   element.dataset.ownStatus=turn.canAct?'act':'wait';
-  const text=mode.awaitingLoss?'Wurf wird ausgewertet …':ended?(game.status==='finished'?'Abgeschlossen':'Abgebrochen'):game.status==='paused'?'Pause':turn.pendingPowerup?'Truhe geöffnet':mode.torch?(mode.middleCellId?'Fackel · Zielfeld wählen':'Fackel · Zwischenraum wählen'):mode.axe?'Axt des Doppelschlags aktiv':sealed?'Schlusswertung':me?.eliminated?'Ausgeschieden':game.spectator?'Abenteurerprobe · experimentell':game.phase==='waiting_roll'?(game.rollerId===profile.id?'Dein Wurf':`${roller?.displayName||'Nächster Spieler'} würfelt`):turn.done?'Warten auf Mitspieler':'Du bist am Zug';
+  const text=mode.awaitingLoss?'Wurf wird ausgewertet …':ended?(game.status==='finished'?'Abgeschlossen':'Abgebrochen'):game.status==='paused'?'Pause':turn.pendingPowerup?'Truhe geöffnet':mode.torch?(mode.middleCellId?'Fackel · Zielfeld wählen':'Fackel · Zwischenraum wählen'):mode.axe?'Axt des Doppelschlags aktiv':sealed?'Schlusswertung':me?.eliminated?'Ausgeschieden':game.spectator?'Abenteurerprobe · experimentell':game.phase==='waiting_roll'?(game.rollerId===profile.id?'Dein Wurf':`${roller?.displayName||'Nächster Spieler'} würfelt`):turn.done?'Warten auf Mitspieler':own.storedActiveRound===game.round?'Gespeicherte Zahl wählen':'Du bist am Zug';
   const completed=game.participants.filter(p=>p.active&&!p.eliminated&&p.turnDone).length,totalPlayers=game.participants.filter(p=>p.active&&!p.eliminated).length;
   renderSection(title,[text,completed,totalPlayers],()=>[h('span',{id:'turn-message',role:'status'},text),h('span',{class:'turn-completion',title:'Gespeicherte Züge'},`${completed}/${totalPlayers} ✓`)]);
   const showPrompt=turn.canRoll||game.status==='paused'||game.phase==='waiting_roll'&&!ended||sealed||mode.torch||mode.axe;
@@ -100,7 +101,8 @@ export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onWaitStatus,
   diceArea.hidden=!roll;
   if(roll){
    diceTray.setAttribute('aria-label',game.dice?'Aktueller Wurf':`Letzter Wurf · Runde ${roll.round}`);diceTray.title=game.dice?'Aktueller Wurf':`Letzter Wurf · Runde ${roll.round}`;
-   renderSection(diceTray,[roll.key,roll.dice],()=>roll.dice.map((v,i)=>diceFace(v,i===3,i)));
+   const displayDice=game.dice?effectiveDice(game):roll.dice;
+   renderSection(diceTray,[roll.key,displayDice],()=>displayDice.map((v,i)=>diceFace(v,i===3,i)));
    renderSection(options,[Boolean(game.dice),diceHints(game.settings),turn.options,turn.redOptions],()=>game.dice&&diceHints(game.settings)?h('div',{class:'combination-lists'},h('div',{class:'combination-list','aria-label':'Deine Kombinationen'},...sortRequirements(turn.options).map(n=>h('span',{class:'combination'},requirementLabel(n)))),
     turn.redOptions?.length?h('div',{class:'red-combinations','aria-label':'Zusätzlich mit rotem Würfel'},...sortRequirements(turn.redOptions).map(n=>h('span',{class:'combination red'},requirementLabel(n)))):null):null);
   }
@@ -114,12 +116,14 @@ export function turnPanel({profile,onRoll,onLoseLife,onResolveWait,onWaitStatus,
   renderSection(diamonds,own.diamonds,()=>[icon('diamond'),h('strong',{},own.diamonds||0)]);diamonds.title=`${own.diamonds||0} Diamanten`;
   renderSection(penalty,[own.lostLives,own.extraLives],()=>`${lifePenalty(own)} Leben`);
   gold.hidden=!game.definition?.document.rooms.some(r=>['goldSack','goldCoin'].includes(r.type));renderSection(gold,own.goldPoints,()=>`● ${own.goldPoints||0}`);gold.title='Goldpunkte';
-  renderSection(resources,[own.redUses,own.torchUses,own.axeUses,own.hornUses,own.powerups,mode.torch,mode.axe,busy,turn.canAct,game.settings.fog,game.status],()=>[
+  renderSection(resources,[own.redUses,own.torchUses,own.axeUses,own.hornUses,own.magicUses,own.magicRound,own.flaskUses,own.storedNumber,own.storedActiveRound,own.powerups,mode.torch,mode.axe,busy,turn.canAct,game.settings.fog,game.settings.fogRange,game.status,game.round],()=>[
    h('span',{class:'score-red',title:'Verwendungen des roten Würfels'},icon('dice'),`${own.redUses||0}×`),
    onTorch&&(own.torchUses>0||own.powerups?.includes('torch'))?h('button',{id:'torch-mode',class:`resource-button ${mode.torch?'active':''}`,disabled:busy||!turn.canAct||!own.torchUses,'aria-label':`Fackel · ${own.torchUses||0} Verwendungen`,'aria-pressed':Boolean(mode.torch),title:'Fackel',onclick:onTorch},'🔥',h('span',{},own.torchUses||0)):null,
    onAxe&&(own.axeUses>0||own.powerups?.includes('axe'))?h('button',{id:'axe-mode',class:`resource-button ${mode.axe?'active':''}`,disabled:busy||!turn.canAct||!own.axeUses,'aria-label':`Axt des Doppelschlags · ${own.axeUses||0} Verwendungen`,'aria-pressed':Boolean(mode.axe),title:'Axt des Doppelschlags',onclick:onAxe},'🪓',h('span',{},own.axeUses||0)):null,
    onHorn&&own.powerups?.includes('horn')?h('button',{id:'use-horn',class:'resource-button',disabled:busy||!own.hornUses||game.status!=='playing','aria-label':`Das Horn des Nebeljägers · ${own.hornUses||0} Verwendungen`,title:'Das Horn des Nebeljägers · 10 Sekunden Monsterblick',onclick:onHorn},'📯',h('span',{},own.hornUses||0)):null,
-   own.powerups?.includes('binocular')?h('span',{class:'score-vision',title:'Fernglas · dauerhaft drei Felder Sicht'},'🔭 3'):game.settings.fog?h('span',{class:'score-vision',title:'Zwei Felder Sicht'},'☁ 2'):null]);
+   onMagic&&own.powerups?.includes('magicDie')?h('button',{id:'use-magic-die',class:'resource-button',disabled:busy||!turn.canAct||!own.magicUses||own.storedActiveRound===game.round,'aria-label':`Magischer Würfel · ${own.magicUses||0} Verwendungen`,title:'Einen Würfel um eins verändern',onclick:onMagic},'✧⚄',h('span',{},own.magicUses||0)):null,
+   onFlask&&own.powerups?.includes('numberFlask')&&own.flaskUses>0?h('button',{id:'use-number-flask',class:`resource-button ${own.storedActiveRound===game.round?'active':''}`,disabled:busy||!turn.canAct,'aria-label':own.storedNumber?`Zahlenbüchse · gespeicherte ${own.storedNumber}${own.storedActiveRound===game.round?' zurücklegen':' verwenden'}`:'Zahlenbüchse · Zahl einpacken',title:own.storedNumber?`Gespeicherte ${own.storedNumber} ${own.storedActiveRound===game.round?'zurücklegen':'verwenden'}`:'Eine Zahl statt deines Zuges einpacken',onclick:onFlask},'⚗',h('span',{},own.storedNumber||'1×')):null,
+   game.settings.fog?own.powerups?.includes('binocular')?h('span',{class:'score-vision',title:'Fernglas · ein Feld zusätzliche Sicht'},`🔭 ${(Number(game.settings.fogRange)||2)+1}`):h('span',{class:'score-vision',title:'Sichtweite'},`☁ ${Number(game.settings.fogRange)||2}`):null]);
   const taskKey=[game.tasks,own.reached,game.visibleCells,game.roundRequirements,game.status];
   tasks.hidden=!['special','custom'].some(key=>game.tasks?.[key]?.enabled);
   renderSection(tasks,taskKey,()=>['special','custom'].filter(key=>game.tasks?.[key]?.enabled).map(key=>{

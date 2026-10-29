@@ -7,6 +7,7 @@ import {diceFace} from './dice.js';
 import {requirementLabel} from './rules.js';
 import {hornIsActive} from './visibility.js';
 import {audio} from '../audio.js';
+import {magicDiceDialog,numberFlaskDialog} from './artifacts.js';
 
 export function testMode({api,document:doc,profile}){
  const engine=new TestGame({document:doc,rules:doc.rules,allowedPowerups:doc.allowedPowerups,graph:connections(doc)});
@@ -14,6 +15,7 @@ export function testMode({api,document:doc,profile}){
  const message=feedback(),status=h('strong',{id:'test-status',role:'status'}),score=h('span',{id:'test-score'}),tray=h('div',{class:'dice-tray'}),combos=h('div',{class:'combination-list'}),powers=h('div',{class:'test-power-controls'}),tools=h('div',{class:'test-resource-controls'});
  function toggle(id,label,checked){const input=h('input',{id,type:'checkbox',checked});input.addEventListener('change',render);return {input,node:h('label',{class:'rule-check'},input,label)};}
  const fog=toggle('test-fog','Nebel',false),sums=toggle('test-sums','Würfelsummen',true),hints=toggle('test-hints','Feldtipps',true);
+ const fogRange=h('select',{id:'test-fog-range','aria-label':'Sichtweite im Nebel'},...[1,2,3].map(n=>h('option',{value:n},`${n} ${n===1?'Feld':'Felder'}`)));fogRange.value='2';fogRange.addEventListener('change',render);
  const roll=h('button',{id:'test-roll',class:'button primary',onclick:()=>act(()=>{const result=engine.roll();audio.effect('dice');if(result.automatic)setFeedback(message,'Kein legaler Zug: ein Leben verloren.','info');})},icon('dice'),'Würfeln');
  const lose=h('button',{id:'test-lose-life',class:'button secondary',onclick:()=>act(()=>engine.loseLife())},'Leben verlieren');
  const preview=boardPreview(api,engine.definition,{prefix:'test',title:'Lokales Testspiel',onCell:id=>{
@@ -24,7 +26,9 @@ export function testMode({api,document:doc,profile}){
  function chooseChest(){if(closed||powerDialog||!engine.state.pendingChests.length)return;const available=engine.availablePowers(fog.input.checked);if(!available.length){engine.state.pendingChests=[];render();return;}
  powerDialog=powerupDialog({available,onChoose:async type=>{engine.choosePower(type);render();return true;},onClose:()=>{powerDialog=null;}});}
  const reset=h('button',{id:'test-reset',class:'button secondary',onclick:()=>{powerDialog?.close();setFeedback(message,'');engine.reset();middle=null;torch=false;axe=false;render();}},'Neu beginnen');
- const dialog=h('dialog',{class:'game-dialog test-mode-dialog','aria-label':'Lokaler Kartentest'},h('header',{class:'test-mode-header'},h('h2',{},'Testmodus'),h('span',{},'Nur auf diesem Gerät · ohne Speicherung'),h('button',{class:'button secondary',onclick:()=>dialog.close()},'Test schließen')),h('div',{class:'test-controls'},fog.node,sums.node,hints.node,reset),h('div',{class:'test-board-area'},preview.element),h('div',{class:'test-dock'},status,score,roll,lose,tray,combos,tools),h('details',{},h('summary',{},'Powerups frei ausprobieren'),powers),message,h('small',{},'Linksklick: normaler Zug. Rechtsklick: Feld freischalten oder einen beliebigen Gegner einmal angreifen.'));
+ const fullscreen=h('button',{id:'test-fullscreen',class:'button secondary',onclick:async()=>{if(document.fullscreenElement===dialog){await document.exitFullscreen();return;}if(dialog.classList.contains('test-expanded')){dialog.classList.remove('test-expanded');fullscreen.textContent='Vollbild';return;}try{await dialog.requestFullscreen();fullscreen.textContent='Vollbild verlassen';}catch{dialog.classList.add('test-expanded');fullscreen.textContent='Vollbild verlassen';}}},'Vollbild');
+ const dialog=h('dialog',{class:'game-dialog test-mode-dialog','aria-label':'Lokaler Kartentest'},h('header',{class:'test-mode-header'},h('h2',{},'Testmodus'),h('span',{},'Nur auf diesem Gerät · ohne Speicherung'),fullscreen,h('button',{class:'button secondary',onclick:()=>dialog.close()},'Test schließen')),h('div',{class:'test-controls'},fog.node,h('label',{class:'test-fog-range'},'Sichtweite',fogRange),sums.node,hints.node,reset),h('div',{class:'test-board-area'},preview.element),h('div',{class:'test-dock'},status,score,roll,lose,tray,combos,tools),h('details',{},h('summary',{},'Powerups frei ausprobieren'),powers),message,h('small',{},'Linksklick: normaler Zug. Rechtsklick: Feld freischalten oder einen beliebigen Gegner einmal angreifen.'));
+ const fullscreenChanged=()=>{fullscreen.textContent=document.fullscreenElement===dialog||dialog.classList.contains('test-expanded')?'Vollbild verlassen':'Vollbild';};document.addEventListener('fullscreenchange',fullscreenChanged);
  for(const [type,info] of Object.entries(POWERUP_INFO)){
   const input=h('input',{type:'checkbox','data-test-power':type,onchange:()=>act(()=>engine.enablePower(type,input.checked))}),refill=h('button',{class:'text-button',type:'button',onclick:()=>act(()=>{engine.enablePower(type);input.checked=true;})},'Auffüllen');powers.append(h('div',{},h('label',{},input,`${info.symbol} ${info.name}`),refill));
  }
@@ -32,11 +36,17 @@ export function testMode({api,document:doc,profile}){
  score.textContent=`${engine.score().points} Punkte · ${state.diamonds} ♦ · ${state.lostLives} Leben verloren`;
  roll.disabled=engine.phase!=='waiting_roll'||engine.finished||engine.eliminated||state.pendingChests.length>0;lose.hidden=engine.phase!=='choosing'||engine.actions().length>0||state.pendingChests.length>0;
  tray.replaceChildren(...(engine.dice||[]).map((n,i)=>diceFace(n,i===3,i)));combos.hidden=!sums.input.checked;combos.replaceChildren(...engine.options().map(n=>h('span',{class:'combination'},requirementLabel(n))));
- tools.replaceChildren(state.torchUses>0?h('button',{id:'test-torch',class:`resource-button ${torch?'active':''}`,onclick:()=>{torch=!torch;axe=false;middle=null;render();}},`🔥 ${state.torchUses}`):null,state.axeUses>0?h('button',{id:'test-axe',class:`resource-button ${axe?'active':''}`,onclick:()=>{axe=!axe;torch=false;middle=null;render();}},`🪓 ${state.axeUses}`):null,state.hornUses>0?h('button',{id:'test-horn',class:'resource-button',onclick:()=>act(()=>{engine.horn();audio.effect('horn');})},'📯 Horn'):null,state.pendingChests.length?h('button',{class:'button secondary',onclick:chooseChest},'Powerup wählen'):null);
+ tools.replaceChildren(...[
+  state.torchUses>0?h('button',{id:'test-torch',class:`resource-button ${torch?'active':''}`,onclick:()=>{torch=!torch;axe=false;middle=null;render();}},`🔥 ${state.torchUses}`):null,
+  state.axeUses>0?h('button',{id:'test-axe',class:`resource-button ${axe?'active':''}`,onclick:()=>{axe=!axe;torch=false;middle=null;render();}},`🪓 ${state.axeUses}`):null,
+  state.hornUses>0?h('button',{id:'test-horn',class:'resource-button',onclick:()=>act(()=>{engine.horn();audio.effect('horn');})},'📯 Horn'):null,
+  state.magicUses>0?h('button',{id:'test-magic',class:'resource-button',disabled:engine.phase!=='choosing'||state.storedActiveRound===engine.round,onclick:()=>magicDiceDialog({dice:state.magicRound===engine.round?state.magicDice:engine.dice,onChoose:async(i,d)=>act(()=>engine.magic(i,d))})},`✧⚄ ${state.magicUses}`):null,
+  state.flaskUses>0?h('button',{id:'test-flask',class:`resource-button ${state.storedActiveRound===engine.round?'active':''}`,disabled:engine.phase!=='choosing',onclick:()=>{if(state.storedNumber){act(()=>engine.toggleStored());return;}numberFlaskDialog({options:engine.options().filter(n=>/^([2-9]|10|11|12)$/.test(n)).map(number=>({number,useRed:false})),onChoose:async number=>act(()=>engine.store(number))});}},`⚗ ${state.storedNumber||'1×'}`):null,
+  state.pendingChests.length?h('button',{class:'button secondary',onclick:chooseChest},'Powerup wählen'):null].filter(Boolean));
  for(const input of powers.querySelectorAll('input'))input.checked=state.powerups.includes(input.dataset.testPower);
  const actions=torch?(middle?engine.actions(middle):engine.torchActions().map(a=>({...a,cellId:a.middleCellId}))):engine.actions();
- preview.update({...engine.view(fog.input.checked),actions,middleCellId:middle,interactive:!engine.finished&&!engine.eliminated&&engine.phase==='choosing'&&!state.pendingChests.length,contextInteractive:true,hints:hints.input.checked,markStyle:profile?.preferences?.markStyle||'cross'});lastHorn=hornIsActive(state);
+ preview.update({...engine.view(fog.input.checked,Number(fogRange.value)),actions,middleCellId:middle,interactive:!engine.finished&&!engine.eliminated&&engine.phase==='choosing'&&!state.pendingChests.length,contextInteractive:true,hints:hints.input.checked,markStyle:profile?.preferences?.markStyle||'cross'});lastHorn=hornIsActive(state);
  }
  const clock=setInterval(()=>{if(lastHorn!==hornIsActive(engine.state))render();},250);
- dialog.addEventListener('close',()=>{closed=true;clearInterval(clock);powerDialog?.close();preview.cleanup();dialog.remove();},{once:true});document.body.append(dialog);dialog.showModal();render();return dialog;
+ dialog.addEventListener('close',()=>{closed=true;clearInterval(clock);powerDialog?.close();preview.cleanup();document.removeEventListener('fullscreenchange',fullscreenChanged);if(document.fullscreenElement===dialog)document.exitFullscreen().catch(()=>{});dialog.remove();},{once:true});document.body.append(dialog);dialog.showModal();render();return dialog;
 }

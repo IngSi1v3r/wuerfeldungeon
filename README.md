@@ -1,8 +1,8 @@
-# Würfeldungeon 1.2.0
+# Würfeldungeon 1.3.0
 
 Multiplayer-Würfelspiel mit gemeinsamer Kartenwerkstatt, individuellen Spielbrettern, gespeicherten Partien und Druckexport.
 
-Installation und Update: [SETUP.md](SETUP.md). Ein bestehendes Projekt mit Version 1.1.0 benötigt nur das Upgrade `supabase/migrations/034_adventurers.sql` und die neuen Webdateien. Das erhält alle Daten. Die separate Datei `supabase/RESET_ALL_DATA.sql` ist ausdrücklich destruktiv und ausschließlich für den vollständigen Neustart gedacht.
+Installation und Update: [SETUP.md](SETUP.md). Von Version 1.2.0 aus genügt `supabase/migrations/036_artifacts_mobile.sql` und anschließend die neuen Webdateien. Alle bisherigen Daten bleiben erhalten. Die separate Datei `supabase/RESET_ALL_DATA.sql` ist ausschließlich für einen ausdrücklich gewünschten vollständigen Neustart gedacht.
 
 ## Funktionen
 
@@ -12,11 +12,12 @@ Installation und Update: [SETUP.md](SETUP.md). Ein bestehendes Projekt mit Versi
 
 - Spielername/Passwort, dauerhafte Sitzungen, Profilbilder, Statistik und Einstellungen. Registrierung zunächst ohne Zugangscode; die Codepflicht bleibt optional verfügbar.
 - Kartenbibliothek, Bearbeitungssperre, Autospeicherung, Bilder, portable JSON-Dateien, unveränderbare Veröffentlichungen, Testmodus sowie PNG/PDF-Drucklayout.
-- Warteräume, Spielpasswörter, getrennte Spielhilfen, offene/verdeckte Gegnerkarten, Fog of War und Powerups je Partie.
+- Warteräume, Spielpasswörter, getrennte Spielhilfen, offene/verdeckte Gegnerkarten, Fog of War mit Sichtweite 1 bis 3 und Powerups je Partie.
+- Magischer Würfel mit zwei privaten Korrekturen um einen Würfelpunkt und Zahlenbüchse zum einmaligen Aufbewahren einer Würfelsumme für einen späteren Zug.
 - Servergeprüfte Züge, gemeinsame Erstbelohnungen innerhalb einer Runde, Lebensanzeige, Spezialaufgaben, Pausen und Wiederaufnahme. Warteoptionen öffnen sich nach einer Minute über die Sanduhr am betroffenen Spieler.
 - Endwertung mit mehreren Siegern bei Gleichstand, Chronik, Wiederholung und Kosmetikshop. Drei Markierungen und zwei Lagerhintergründe sind sofort kostenlos verfügbar.
 - Runen schalten Bosszahlen frei oder verursachen eine einstellbare Anzahl Bosstreffer beim Erreichen. Im Nebel werden Portalpartner erst beim Betreten des Portals enthüllt.
-- Anpassbare Animationen sowie getrennte Schalter für Effekte und Hintergrundklang. Spielen funktioniert mobil; Karten bearbeiten ist für den PC ausgelegt.
+- Anpassbare Animationen sowie getrennte Schalter für Effekte und Hintergrundklang. Spielen funktioniert mobil im Hoch- und Querformat; Karten bearbeiten ist für den PC ausgelegt. Der lokale Kartentest kann in den Vollbildmodus wechseln.
 
 ## Entwickeln und prüfen
 
@@ -29,6 +30,7 @@ npm test
 npx playwright install chromium
 npm run test:solo-ai-browser
 npm run test:adventurers-browser
+npm run test:artifacts-browser
 npm run test:release-browser
 npm run test:release-game-browser
 npm run test:rune-hits-browser

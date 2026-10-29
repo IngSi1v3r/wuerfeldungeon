@@ -3,13 +3,13 @@ import {connections} from './model.js';
 import {visibleCells} from '../games/visibility.js';
 import {h} from '../dom.js';
 let queue=Promise.resolve();const cache=new Map();
-export function fogMiniature(api,map,definition=null){
+export function fogMiniature(api,map,definition=null,radius=2){
  // Never briefly show the full stored PNG when fog is selected.
  const node=h('div',{class:'map-preview-wrap fog-preview','aria-label':'Nebelvorschau'},h('span',{class:'muted'},'☁ Nebelvorschau …'));
- const key=`${map.id}:${map.versionId||map.revision||''}`;
+ const key=`${map.id}:${map.versionId||map.revision||''}:${radius}`;
  if(!cache.has(key)){
   const job=queue.catch(()=>{}).then(async()=>{
-   const d=definition||await api.authRpc('get_map',{p_map_id:map.id}).then(r=>({document:r.map.document,rules:r.map.document.rules,graph:connections(r.map.document)}));
+   const d={...(definition||await api.authRpc('get_map',{p_map_id:map.id}).then(r=>({document:r.map.document,rules:r.map.document.rules,graph:connections(r.map.document)}))),fogRange:radius};
    return new Promise((resolve,reject)=>{
     const host=h('div');host.style.cssText='position:fixed;left:-10000px;top:0;width:1000px;height:800px;visibility:hidden';document.body.append(host);
     const timer=setTimeout(()=>{preview.cleanup();host.remove();reject(Error('Vorschau nicht verfügbar.'));},25000);

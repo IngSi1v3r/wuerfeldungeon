@@ -9,7 +9,7 @@ export const gameLink=id=>`#/game?id=${id}`;
 export const dateLabel=value=>value?new Date(value).toLocaleString('de-AT',{dateStyle:'medium',timeStyle:'short'}):'';
 export const gameStatusLabel=g=>({lobby:'Warteraum',playing:'Laufend',paused:'Pausiert',finished:'Abgeschlossen',cancelled:'Abgebrochen'})[g.status];
 export function settingsBadges(settings) {
-  return h('div',{class:'game-badges'},h('span',{class:'badge'},icon('eye'),settings.cards==='hidden'?'Verdeckte Karten':'Offene Karten'),h('span',{class:'badge'},icon('sparkle'),diceHints(settings)&&fieldHints(settings)?'Mit Tipps':diceHints(settings)?'Würfelsummen':fieldHints(settings)?'Feldtipps':'Ohne Tipps'),settings.fog?h('span',{class:'badge'},'☁ Fog of War'):null,settings.redEvery?h('span',{class:'badge'},settings.redEvery===1?'Rot jede Runde':`Rot jede ${settings.redEvery}. Runde`):null);
+  return h('div',{class:'game-badges'},h('span',{class:'badge'},icon('eye'),settings.cards==='hidden'?'Verdeckte Karten':'Offene Karten'),h('span',{class:'badge'},icon('sparkle'),diceHints(settings)&&fieldHints(settings)?'Mit Tipps':diceHints(settings)?'Würfelsummen':fieldHints(settings)?'Feldtipps':'Ohne Tipps'),settings.fog?h('span',{class:'badge'},`☁ Nebel · ${Number(settings.fogRange)||2} Felder`):null,settings.redEvery?h('span',{class:'badge'},settings.redEvery===1?'Rot jede Runde':`Rot jede ${settings.redEvery}. Runde`):null);
 }
 export function lobbyRules(definition){
  if(!definition)return null;

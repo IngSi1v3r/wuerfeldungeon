@@ -21,7 +21,7 @@ export function sightEdges(definition,state={}){
  }
  return graphEdges(definition).filter(([a,b])=>!blocked.has(key(a,b)));
 }
-export function visibleCells(definition,state={},radius=state.powerups?.includes('binocular')?3:2){
+export function visibleCells(definition,state={},radius=(Number(definition.fogRange)||2)+(state.powerups?.includes('binocular')?1:0)){
  const rooms=definition.document.rooms,byId=new Map(rooms.map(r=>[String(r.id),r])),reached=new Set((state.reached||[]).map(String)),dist=new Map(),queue=[];
  for(const r of rooms)if(reached.has(String(r.id))||r.start&&!blocksSight(r)){dist.set(String(r.id),0);queue.push(String(r.id));}
  const neighbors=new Map();for(const [a,b] of sightEdges(definition,state)){if(!neighbors.has(a))neighbors.set(a,[]);if(!neighbors.has(b))neighbors.set(b,[]);neighbors.get(a).push(b);neighbors.get(b).push(a);}

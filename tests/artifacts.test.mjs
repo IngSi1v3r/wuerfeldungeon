@@ -1,0 +1,76 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {randomUUID} from 'node:crypto';
+import {createAdventurerDatabase} from './helpers/adventurers.mjs';
+import {soloFixture} from './helpers/solo-ai.mjs';
+import {register,userRpc,publishFixture} from './helpers/games.mjs';
+import {installTestDice,forceDice,seedState} from './helpers/turns.mjs';
+import {callRpc} from './helpers/database.mjs';
+import {TestGame} from '../web/js/games/test-engine.js';
+import {connections} from '../web/js/maps/model.js';
+import {visibleCells} from '../web/js/games/visibility.js';
+
+const sql=new URL('../supabase/migrations/036_artifacts_mobile.sql',import.meta.url);
+const req=()=>randomUUID();
+
+test('Artefakte und Nebel: serverseitige Züge, gespeicherter Zustand, einmalige Verwendung und lokaler Test',async()=>{
+ const db=await createAdventurerDatabase();try{
+  await db.exec(await readFile(sql,'utf8'));
+  const user=await register(db,'ArtifactFlo'),other=await register(db,'ArtifactGast');
+  const doc=soloFixture();doc.allowedPowerups=['magicDie','numberFlask','binocular'];
+  doc.rooms.push({id:6,type:'normal',x:0,y:4,w:4,h:4,number:12,start:false,dimmed:false});doc.nextId=7;
+  const map=await publishFixture(db,user,'Artefaktmine',doc);
+  const rpc=(name,params={})=>userRpc(db,user,name,params);
+  const create=await rpc('create_solo_game',{p_map_version_id:map.versionId,p_name:'Probe',p_settings:{cards:'open',hints:true,fog:true,fogRange:3,allowedPowerups:doc.allowedPowerups},p_bot_count:0,p_red_every:1,p_ai_only:false,p_request_id:req()});
+  assert.equal(create.ok,true,JSON.stringify(create));const id=create.gameId;
+  let game=(await rpc('get_game',{p_game_id:id})).game;
+  assert.equal(game.settings.fogRange,3);
+  assert.deepEqual(game.definition.allowedPowerups,doc.allowedPowerups);
+  const onlyOne=(await db.query('select dungeon_private.game_visible_cells(g,s.state) cells from dungeon_games g join dungeon_game_player_states s on s.game_id=g.id where g.id=$1',[id])).rows[0].cells;
+  await db.query("update dungeon_games set settings=settings||'{\"fogRange\":1}'::jsonb where id=$1",[id]);
+  const near=(await db.query('select dungeon_private.game_visible_cells(g,s.state) cells from dungeon_games g join dungeon_game_player_states s on s.game_id=g.id where g.id=$1',[id])).rows[0].cells;
+  assert.ok(onlyOne.length>near.length,'server counts deeper connected rooms');
+  await seedState(db,id,user,{powerups:['binocular']});
+  const withGlass=(await db.query('select dungeon_private.game_visible_cells(g,s.state) cells from dungeon_games g join dungeon_game_player_states s on s.game_id=g.id where g.id=$1',[id])).rows[0].cells;
+  assert.ok(withGlass.length>near.length,'binocular adds one step to configured range');
+  await db.query("update dungeon_games set settings=settings||'{\"fogRange\":3}'::jsonb where id=$1",[id]);
+  assert.ok(visibleCells({...game.definition,fogRange:3},{reached:[]}).length>visibleCells({...game.definition,fogRange:1},{reached:[]}).length);
+  await installTestDice(db);await seedState(db,id,user,{magicUses:2,powerups:['magicDie'],redUses:0});await forceDice(db,[2,2,1,1]);
+  assert.equal((await rpc('roll_game_dice',{p_game_id:id,p_round:1,p_request_id:req()})).ok,true);
+  game=(await rpc('get_game',{p_game_id:id})).game;assert.equal(game.turn.canAct,true,'magic prevents premature automatic life loss');
+  assert.equal(game.turn.actions.some(a=>a.cellId==='1'),false);
+  assert.equal((await userRpc(db,other,'use_game_magic',{p_game_id:id,p_state_revision:game.turn.ownRevision,p_die_index:0,p_delta:1,p_request_id:req()})).error,'GAME_NOT_MEMBER');
+  const magicReq=req(),magicArgs={p_game_id:id,p_state_revision:game.turn.ownRevision,p_die_index:0,p_delta:1,p_request_id:magicReq};
+  assert.equal((await rpc('use_game_magic',magicArgs)).ok,true);
+  assert.equal((await rpc('use_game_magic',magicArgs)).ok,true,'idempotent command');
+  game=(await rpc('get_game',{p_game_id:id})).game;assert.deepEqual(game.dice,[2,2,1,1]);assert.deepEqual(game.ownState.magicDice,[3,2,1,1]);assert.equal(game.ownState.magicUses,1);
+  assert.equal(game.turn.actions.some(a=>a.cellId==='1'),true);
+  assert.equal((await rpc('use_game_magic',{p_game_id:id,p_state_revision:game.turn.ownRevision,p_die_index:3,p_delta:1,p_request_id:req()})).ok,true,'second use in same round');
+  game=(await rpc('get_game',{p_game_id:id})).game;assert.deepEqual(game.ownState.magicDice,[3,2,1,2]);assert.equal(game.ownState.magicUses,0);
+  assert.equal((await rpc('use_game_magic',{...magicArgs,p_state_revision:game.turn.ownRevision,p_request_id:req()})).error,'GAME_POWERUP_UNAVAILABLE');
+  assert.equal((await rpc('play_game_action',{p_game_id:id,p_round:1,p_state_revision:game.turn.ownRevision,p_action:'cell',p_cell_id:'1',p_use_red:false,p_request_id:req()})).ok,true);
+  await seedState(db,id,user,{flaskUses:1,powerups:['magicDie','numberFlask']});await forceDice(db,[6,6,1,2]);
+  assert.equal((await rpc('roll_game_dice',{p_game_id:id,p_round:2,p_request_id:req()})).ok,true);
+  game=(await rpc('get_game',{p_game_id:id})).game;
+  assert.equal(game.turn.canAct,true,'flask or magic can still be used before life loss');
+  game=(await rpc('get_game',{p_game_id:id})).game;
+  const storeArgs={p_game_id:id,p_state_revision:game.turn.ownRevision,p_number:'12',p_use_red:false,p_request_id:req()};
+  assert.equal((await rpc('store_game_number',storeArgs)).ok,true);
+  assert.equal((await rpc('store_game_number',storeArgs)).ok,true);
+  game=(await rpc('get_game',{p_game_id:id})).game;assert.equal(game.ownState.storedNumber,'12');assert.equal(game.round,3);
+  await seedState(db,id,user,{magicUses:0});await forceDice(db,[1,1,1,1]);await rpc('roll_game_dice',{p_game_id:id,p_round:3,p_request_id:req()});game=(await rpc('get_game',{p_game_id:id})).game;
+  assert.equal(game.turn.canAct,true,'stored number can avoid a dead roll');
+  const toggle=async active=>{const answer=await rpc('toggle_stored_number',{p_game_id:id,p_state_revision:game.turn.ownRevision,p_active:active,p_request_id:req()});assert.equal(answer.ok,true,JSON.stringify(answer));game=(await rpc('get_game',{p_game_id:id})).game;};
+  await toggle(true);assert.deepEqual(game.turn.options,['12']);assert.ok(game.turn.actions.some(a=>a.cellId==='6'));
+  assert.equal(game.turn.canLoseLife,true,'a stored move remains optional when the normal roll has none');
+  await toggle(false);assert.ok(!game.turn.actions.some(a=>a.cellId==='6'));
+  await toggle(true);
+  assert.equal((await rpc('play_game_action',{p_game_id:id,p_round:3,p_state_revision:game.turn.ownRevision,p_action:'cell',p_cell_id:'6',p_use_red:false,p_request_id:req()})).ok,true);
+  game=(await rpc('get_game',{p_game_id:id})).game;assert.equal(game.ownState.storedNumber,null);assert.equal(game.ownState.flaskUses,0);assert.ok(game.ownState.reached.includes('6'));
+
+  const local=new TestGame({document:doc,rules:doc.rules,allowedPowerups:doc.allowedPowerups,graph:connections(doc)});local.enablePower('magicDie');local.enablePower('numberFlask');local.roll([2,2,1,1]);local.magic(0,1);local.magic(3,1);assert.deepEqual(local.state.magicDice,[3,2,1,2]);assert.ok(local.actions().some(a=>a.cellId==='1'));local.play('1');local.roll([6,6,1,2]);local.store('12');local.roll([1,1,1,1]);local.toggleStored();assert.ok(local.actions().some(a=>a.cellId==='6'));local.play('6');assert.equal(local.state.storedNumber,null);
+  await db.exec(await readFile(sql,'utf8'));
+  const status=await callRpc(db,'app_status');assert.equal(status.releaseVersion,'1.3.0');assert.equal(status.artifactVersion,1);
+ }finally{await db.close();}
+});

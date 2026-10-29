@@ -4,13 +4,13 @@ import {goalTargetIds,goalRequiredCount} from '../maps/features.js';
 // Bewusst nur Arbeitsspeicher: keine API, kein localStorage, keine Chronik.
 export class TestGame {
  constructor(definition){this.definition=structuredClone(definition);this.reset();}
- reset(){this.round=0;this.phase='waiting_roll';this.dice=null;this.requirements={};this.traps=new Map();this.state={reached:[],monsterHits:{},diamonds:0,goldPoints:0,lostLives:0,extraLives:0,powerups:[],redUses:3,torchUses:0,axeUses:0,hornUses:0,pendingChests:[],firstKills:[],taskRewards:{}};this.finished=false;this.eliminated=false;}
+ reset(){this.round=0;this.phase='waiting_roll';this.dice=null;this.requirements={};this.traps=new Map();this.state={reached:[],monsterHits:{},diamonds:0,goldPoints:0,lostLives:0,extraLives:0,powerups:[],redUses:3,torchUses:0,axeUses:0,hornUses:0,magicUses:0,flaskUses:0,storedNumber:null,pendingChests:[],firstKills:[],taskRewards:{}};this.finished=false;this.eliminated=false;}
  get rooms(){return this.definition.document.rooms;}
  room(id){return this.rooms.find(r=>String(r.id)===String(id));}
  reached(id){return this.state.reached.includes(String(id));}
  neighbor(a,b){return graphEdges(this.definition).some(e=>e.includes(String(a))&&e.includes(String(b)));}
  reachable(id){const r=this.room(id);return !!r&&!this.reached(id)&&(r.start&&!['monster','boss','miniboss'].includes(r.type)||this.state.reached.some(a=>this.neighbor(a,id)));}
- options(){return diceCombinations(this.dice,true,this.rooms.some(r=>r.type==='doubleSum'));}
+ options(){return this.state.storedActiveRound===this.round&&this.state.storedNumber!=null?[String(this.state.storedNumber)]:diceCombinations(this.state.magicRound===this.round?this.state.magicDice:this.dice,true,this.rooms.some(r=>r.type==='doubleSum'));}
  availablePowers(fog=true){return (this.definition.allowedPowerups||[]).filter(p=>!this.state.powerups.includes(p)&&(fog||!['binocular','horn'].includes(p)));}
  attacks(r,state=this.state){return activeAttacks(r,this.definition.rules,state);}
  matches(r,state=this.state){return (ENEMY_TYPES.has(r.type)?this.attacks(r,state):[String(r.type==='crazy'?this.requirements[r.id]:r.type==='doubleSum'?`doubles:${r.number}`:r.number)]).some(n=>this.options().includes(n));}
@@ -24,7 +24,7 @@ export class TestGame {
  roll(dice=Array.from({length:4},()=>1+crypto.getRandomValues(new Uint32Array(1))[0]%6)){
  if(this.phase!=='waiting_roll'||this.finished||this.eliminated||this.state.pendingChests.length)throw Error('Zuerst den aktuellen Zug abschließen.');
  this.round++;this.dice=dice;this.phase='choosing';for(const r of this.rooms)if(r.type==='crazy'){const values=r.requirements||[];this.requirements[r.id]=values[Math.floor(Math.random()*values.length)];}
- const automatic=!this.actions().length&&!this.torchActions().length;if(automatic)this.loseLife();return {automatic,dice};
+ const automatic=!this.actions().length&&!this.torchActions().length&&!this.state.magicUses&&!this.state.flaskUses;if(automatic)this.loseLife();return {automatic,dice};
  }
  portalPartners(id){return (this.definition.rules?.portalPairs||[]).filter(e=>e.map(String).includes(String(id))).flatMap(e=>e.map(String).filter(n=>n!==String(id)));}
  reach(id){
@@ -53,7 +53,7 @@ export class TestGame {
  else this.reach(id);
  const defeated=this.state.firstKills.length>killsBefore;
  this.awardTasks();this.eliminated=this.state.lostLives>=11+this.state.extraLives;
- if(!cheat){this.phase='waiting_roll';this.finished=this.rooms.filter(r=>['monster','boss','miniboss'].includes(r.type)).every(r=>this.reached(r.id));}
+ if(!cheat){if(this.state.storedActiveRound===this.round){this.state.flaskUses=0;this.state.storedNumber=null;this.state.storedActiveRound=null;}this.phase='waiting_roll';this.finished=this.rooms.filter(r=>['monster','boss','miniboss'].includes(r.type)).every(r=>this.reached(r.id));}
  return {defeated,cheat};
  }
  connected(a,b){if(!this.reached(a)||!this.reached(b))return false;const seen=new Set([String(a)]),queue=[String(a)];for(const id of queue)for(const [x,y] of graphEdges(this.definition)){const n=x===id?y:y===id?x:null;if(n&&this.reached(n)&&!seen.has(n)){seen.add(n);queue.push(n);}}return seen.has(String(b));}
@@ -65,12 +65,19 @@ export class TestGame {
  }
  loseLife(){if(this.phase!=='choosing'||this.actions().length)throw Error('Es ist noch ein normaler Zug möglich.');this.state.lostLives++;this.phase='waiting_roll';this.eliminated=this.state.lostLives>=11+this.state.extraLives;}
  choosePower(type){if(!this.state.pendingChests.length||!this.availablePowers().includes(type))throw Error('Dieses Powerup ist nicht verfügbar.');this.state.pendingChests.shift();this.enablePower(type);if(!this.availablePowers().length)this.state.pendingChests=[];}
- enablePower(type,on=true){const s=this.state;if(!on){s.powerups=s.powerups.filter(p=>p!==type);if(type==='extraLife'){s.extraLives=0;s.diamonds--;}if(type==='redDice')s.redUses=3;if(type==='torch')s.torchUses=0;if(type==='axe')s.axeUses=0;if(type==='horn'){s.hornUses=0;delete s.hornUntil;}return;}
+ enablePower(type,on=true){const s=this.state;if(!on){s.powerups=s.powerups.filter(p=>p!==type);if(type==='extraLife'){s.extraLives=0;s.diamonds--;}if(type==='redDice')s.redUses=3;if(type==='torch')s.torchUses=0;if(type==='axe')s.axeUses=0;if(type==='horn'){s.hornUses=0;delete s.hornUntil;}if(type==='magicDie')s.magicUses=0;if(type==='numberFlask'){s.flaskUses=0;s.storedNumber=null;s.storedActiveRound=null;}return;}
  const fresh=!s.powerups.includes(type);if(fresh)s.powerups.push(type);
  if(type==='extraLife'){s.extraLives=3;if(fresh)s.diamonds++;this.eliminated=s.lostLives>=14;}
- if(type==='redDice')s.redUses+=3;if(type==='torch')s.torchUses=2;if(type==='axe')s.axeUses=2;if(type==='horn')s.hornUses=1;
+ if(type==='redDice')s.redUses+=3;if(type==='torch')s.torchUses=2;if(type==='axe')s.axeUses=2;if(type==='horn')s.hornUses=1;if(type==='magicDie')s.magicUses=2;if(type==='numberFlask')s.flaskUses=1;
  }
+ magic(index,delta){if(this.phase!=='choosing'||this.finished||this.eliminated||this.state.magicUses<1||this.state.storedActiveRound===this.round)throw Error('Der magische Würfel ist gerade nicht verfügbar.');
+  const current=this.state.magicRound===this.round?this.state.magicDice:this.dice;
+  if(!Number.isInteger(index)||index<0||index>3||![-1,1].includes(delta)||current[index]+delta<1||current[index]+delta>6)throw Error('Dieser Würfel kann so nicht verändert werden.');
+  this.state.magicDice=current.map((v,i)=>i===index?v+delta:v);this.state.magicRound=this.round;this.state.magicUses--;}
+ store(number){if(this.phase!=='choosing'||this.state.flaskUses<1||this.state.storedNumber!=null||!/^([2-9]|10|11|12)$/.test(String(number))||!this.options().includes(String(number)))throw Error('Diese Zahl kann jetzt nicht aufbewahrt werden.');
+  this.state.storedNumber=String(number);this.state.storedActiveRound=null;this.phase='waiting_roll';}
+ toggleStored(){if(this.phase!=='choosing'||!this.state.storedNumber||!this.state.flaskUses)throw Error('Keine gespeicherte Zahl vorhanden.');this.state.storedActiveRound=this.state.storedActiveRound===this.round?null:this.round;}
  horn(){if(!this.state.hornUses)throw Error('Das Horn hat keine freie Verwendung.');this.state.hornUses--;this.state.hornUntil=new Date(Date.now()+10000).toISOString();}
- view(fog){return {state:this.state,roundRequirements:this.requirements,traps:[...this.traps].map(([cellId,round])=>({cellId,armed:round<this.round})),visibleCells:viewVisibility(this.definition,this.state,visibleCells(this.definition,this.state)),fog};}
+ view(fog,fogRange=2){const definition={...this.definition,fogRange};return {state:this.state,roundRequirements:this.requirements,traps:[...this.traps].map(([cellId,round])=>({cellId,armed:round<this.round})),visibleCells:viewVisibility(definition,this.state,visibleCells(definition,this.state)),fog};}
  score(){return {points:pointsSoFar(this.state),penalty:lifePenalty(this.state)};}
 }

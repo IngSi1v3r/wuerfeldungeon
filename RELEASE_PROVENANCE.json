@@ -1,7 +1,7 @@
 {
-  "release": "1.1.0",
-  "baseRelease": "1.0.2",
-  "baseArchiveSHA256": "7b63cfae0f3c6114b5e253090e10afad255818fd30add1fc2e3ed91481e7c64a",
-  "databaseMigration": 16,
-  "cleanSource": true
+  "release": "1.3.0",
+  "baseRelease": "1.2.0",
+  "baseArchiveSHA256": "0359b273d86dab1691d842895bc8529b6540a39569bdc32d2aec8ebefbb1eb3d",
+  "databaseMigration": 18,
+  "dataReset": false
 }

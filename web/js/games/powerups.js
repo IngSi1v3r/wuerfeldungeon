@@ -5,7 +5,9 @@ export const POWERUP_INFO=Object.freeze({
  torch:{symbol:'🔥',name:'Fackel',description:'Zwei Verwendungen: einen Raum ohne passende Zahl ausleuchten und anschließend sein Nachbarfeld spielen. Gegner können nur das Ziel sein.'},
  axe:{symbol:'🪓',name:'Axt des Doppelschlags',description:'Zwei Verwendungen: ein Angriff zählt als zwei Treffer. Mit dem roten Würfel kombinierbar.'},
  horn:{symbol:'📯',name:'Das Horn des Nebeljägers',description:'Eine Verwendung: enthüllt zehn Sekunden lang die Position aller Monster und Bosse, ohne ihre Wege zu zeigen.'},
- binocular:{symbol:'🔭',name:'Fernglas',description:'Im Nebel dauerhaft drei statt zwei Felder weit sehen. Wirkt sofort für den Rest der Partie.'},
+ binocular:{symbol:'🔭',name:'Fernglas',description:'Im Nebel dauerhaft ein verbundenes Feld weiter sehen. Wirkt sofort für den Rest der Partie.'},
+ magicDie:{symbol:'✧',name:'Magischer Würfel',description:'Zwei Verwendungen: Einen eigenen Würfel um eins erhöhen oder verringern (1–6). Beide Änderungen sind auch im selben Zug möglich.'},
+ numberFlask:{symbol:'⚗',name:'Zahlenbüchse',description:'Einen verfügbaren Zahlenwurf statt eines Zuges aufbewahren und in einer späteren Runde einmal anstelle des Wurfs verwenden.'},
 });
 export function powerupSelection({selected=[],fog=false,id='game-powerups'}={}) {
  const controls=new Map(),element=h('fieldset',{class:'powerup-selection',id},h('legend',{},'Powerups aus Schatzkisten'));
